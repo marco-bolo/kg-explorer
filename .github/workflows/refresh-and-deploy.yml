@@ -1,20 +1,25 @@
 name: Refresh KG and deploy
 
-# Rebuilds data.json from the upstream marco-bolo/csv-to-json-ld JSON-LD output
-# and republishes the explorer to GitHub Pages. Triggers:
-#   - on push to main (so manual edits to index.html or build_data.py rebuild)
-#   - every 6 hours (catches upstream pipeline updates)
-#   - on demand via the Actions tab
+# Fetches the upstream JSON-LD from marco-bolo/csv-to-json-ld, rebuilds
+# data.json, and deploys to GitHub Pages. Triggered by:
+#   - repository_dispatch (jsonld-rebuilt event): fired by upstream's
+#     build-jsonld workflow when fresh JSON-LD has been committed.
+#   - push to main: rebuilds when index.html / build_data.py change.
+#   - workflow_dispatch: manual run from the Actions tab.
+#
+# data.json is NOT committed back to main — it's regenerated every run
+# from upstream and shipped as part of the Pages artifact. Local development
+# rebuilds with `python build_data.py --src ../csv-to-json-ld/remote/models/schema-jsonld`.
 
 on:
+  repository_dispatch:
+    types: [jsonld-rebuilt]
   push:
     branches: [main]
-  schedule:
-    - cron: '17 */6 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -35,8 +40,6 @@ jobs:
       - name: Fetch upstream JSON-LD
         run: |
           mkdir -p schema-jsonld
-          # Shallow-clone the upstream csv-to-json-ld repo and copy out the
-          # per-entity JSON-LD directory. Sparse-checkout keeps this fast.
           git clone --depth 1 --filter=blob:none --sparse \
             https://github.com/marco-bolo/csv-to-json-ld.git /tmp/c2j
           cd /tmp/c2j && git sparse-checkout set remote/models/schema-jsonld
@@ -48,19 +51,7 @@ jobs:
       - name: Build data.json
         run: python build_data.py --src schema-jsonld --out data.json
 
-      - name: Commit refreshed data.json
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if git diff --quiet data.json; then
-            echo "data.json unchanged"
-          else
-            git add data.json
-            git commit -m "chore(data): refresh KG $(date -u +%Y-%m-%dT%H:%MZ)"
-            git push
-          fi
-
-      - name: Drop schema-jsonld/ before publish (it's huge, not needed at runtime)
+      - name: Drop schema-jsonld/ before publish (not needed at runtime)
         run: rm -rf schema-jsonld
 
       - uses: actions/configure-pages@v5
