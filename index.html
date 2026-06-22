@@ -91,32 +91,96 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
 #lst.running{color:var(--amber)}#lst.done{color:var(--green)}
 .hide{display:none!important}
 #fpick{display:none}
+/* MBO additions: WP heatmap */
+.wphm{display:grid;grid-template-columns:auto repeat(7,1fr);gap:2px;font-family:var(--mono);font-size:9px;align-items:center}
+.wphm-h{color:var(--dim);text-align:center;letter-spacing:.05em}
+.wphm-l{color:var(--dim);padding-right:4px;text-align:right;letter-spacing:.05em}
+.wphm-c{height:18px;display:flex;align-items:center;justify-content:center;border-radius:2px;color:#08101e;font-weight:700;font-size:9px}
+
+/* Detail side panel — opens on node click, slides over the right edge of the canvas */
+#gwrap{position:relative}
+#detail{
+  position:absolute;top:0;right:0;bottom:0;width:380px;
+  background:var(--bg2);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:10;
+  box-shadow:-4px 0 12px rgba(0,0,0,.3);
+  font-family:var(--sans);
+}
+#detail-head{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-start;gap:8px;flex-shrink:0;
+  background:var(--bg3);
+}
+#detail-title{
+  flex:1;font-family:var(--mono);font-size:11px;font-weight:700;
+  letter-spacing:.05em;color:var(--cyan);line-height:1.4;
+  word-break:break-word;
+}
+#detail-close{
+  background:transparent;border:none;color:var(--dim);
+  font-size:22px;line-height:1;cursor:pointer;padding:0 4px;
+  transition:color .15s;
+}
+#detail-close:hover{color:var(--text)}
+#detail-body{
+  flex:1;overflow-y:auto;padding:10px 14px;
+  font-family:var(--mono);font-size:11px;line-height:1.55;
+}
+#detail-body::-webkit-scrollbar{width:5px}
+#detail-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.dsec{margin-bottom:14px}
+.dsec-h{
+  font-family:var(--mono);font-size:9px;letter-spacing:.12em;color:var(--dim);
+  text-transform:uppercase;margin-bottom:6px;
+  padding-bottom:4px;border-bottom:1px solid var(--border);
+}
+.dprop{display:grid;grid-template-columns:90px 1fr;gap:6px;margin-bottom:4px;align-items:start}
+.dprop-k{color:var(--dim);font-size:10px;word-break:break-word}
+.dprop-v{color:var(--text);word-break:break-word;font-size:11px}
+.dprop-v a, .dlink{color:var(--cyan);text-decoration:none;border-bottom:1px dotted var(--cyan)}
+.dprop-v a:hover, .dlink:hover{color:#7dd3fc;border-bottom-style:solid}
+.dlink-int{color:var(--amber);border-bottom-color:var(--amber)}
+.dlink-int:hover{color:#fbbf24}
+.dedge{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:3px 0;border-bottom:1px solid rgba(30,48,80,.4);
+  font-size:10px;
+}
+.dedge:last-child{border-bottom:none}
+.dedge-k{
+  font-size:9px;color:var(--dim);letter-spacing:.04em;text-transform:uppercase;
+  flex-shrink:0;min-width:90px;
+}
+.dedge-t{flex:1;text-align:right;word-break:break-word}
+.dedge-t a{color:var(--cyan);text-decoration:none;border-bottom:1px dotted var(--cyan)}
+.dedge-t a:hover{color:#7dd3fc;border-bottom-style:solid}
+.dkindbadge{
+  display:inline-block;padding:1px 5px;border-radius:2px;font-size:8px;
+  letter-spacing:.06em;text-transform:uppercase;color:#08101e;font-weight:700;
+  margin-right:6px;vertical-align:1px;
+}
+.dlist-toggle{
+  font-size:9px;color:var(--dim);cursor:pointer;margin-left:6px;
+}
+.dlist-toggle:hover{color:var(--cyan)}
 </style>
-</head>
 <body>
 <header>
   <div class="hdot" id="hdot"></div>
-  <h1>KG Explorer</h1>
+  <h1>MARCO-BOLO KG Explorer</h1>
   <div class="hsep"></div>
-  <div class="hsub" id="hsub">Drop JSON files — all schema versions supported</div>
-  <div class="hbadge" id="hbadge">NO DATA</div>
-  <div class="hbadge" id="hprivate" style="display:none;color:var(--purple);border-color:var(--purple)">+ PRIVATE</div>
+  <div class="hsub" id="hsub">Loading catalog graph…</div>
+  <div class="hbadge" id="hbadge">…</div>
 </header>
 <aside>
   <div class="pnl">
     <div class="plbl">Data Source</div>
     <div class="dz" id="sdrop">
       <div class="dzi">📂</div>
-      <div class="dzt"><strong>Drop JSON files</strong> here<br>or click to browse · all versions OK</div>
+      <div class="dzt"><strong>Drop JSON</strong> to overlay<br>or click to browse</div>
     </div>
     <div class="flist" id="flist"></div>
     <input type="file" id="fpick" multiple accept=".json">
-  </div>
-
-  <div class="pnl hide" id="errlog" style="background:rgba(248,113,113,.06);border-color:#f87171">
-    <div class="plbl" style="color:var(--red)">Parse Errors</div>
-    <div class="errlog-body" style="max-height:160px;overflow-y:auto"></div>
-    <button class="btn" id="bclearerr" style="margin-top:8px;border-color:var(--red);color:var(--red)">Clear</button>
   </div>
   <div class="pnl hide" id="pstats">
     <div class="plbl">Graph</div>
@@ -124,67 +188,88 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
       <div class="sbox"><div class="snum" id="sn">0</div><div class="slbl">Nodes</div></div>
       <div class="sbox"><div class="snum" id="se">0</div><div class="slbl">Edges</div></div>
       <div class="sbox"><div class="snum" id="sd">0</div><div class="slbl">Datasets</div></div>
-      <div class="sbox"><div class="snum" id="sp">0</div><div class="slbl">People</div></div>
+      <div class="sbox"><div class="snum" id="sa">0</div><div class="slbl">Actions</div></div>
+    </div>
+  </div>
+  <div class="pnl hide" id="phm">
+    <div class="plbl">WP Coverage</div>
+    <div id="wphm-host"></div>
+    <div style="font-size:9px;color:var(--dim);margin-top:6px;line-height:1.4">
+      rows=entity kind · cols=WP · darker=richer
+    </div>
+  </div>
+  <div class="pnl hide" id="pfilter">
+    <div class="plbl">Filters</div>
+    <span class="clbl">Search</span>
+    <input type="text" id="qsearch" placeholder="mPID or label…"
+      style="width:100%;padding:6px 8px;background:var(--bg);border:1px solid var(--border);
+             border-radius:3px;color:var(--text);font-family:var(--mono);font-size:11px">
+    <span class="clbl" style="margin-top:10px">Work Package</span>
+    <div class="trow" id="wptog" style="flex-wrap:wrap;gap:3px">
+      <button class="tb on" data-wp="all">All</button>
+      <button class="tb" data-wp="WP1">WP1</button>
+      <button class="tb" data-wp="WP2">WP2</button>
+      <button class="tb" data-wp="WP3">WP3</button>
+      <button class="tb" data-wp="WP4">WP4</button>
+      <button class="tb" data-wp="WP5">WP5</button>
+      <button class="tb" data-wp="WP6">WP6</button>
+      <button class="tb" data-wp="WP7">WP7</button>
+      <button class="tb" data-wp="none">(none)</button>
     </div>
   </div>
   <div class="pnl hide" id="pview">
-    <div class="plbl">View Mode</div>
-    <span class="clbl">Graph Structure</span>
-    <div class="trow" id="vtog">
-      <button class="tb on" data-v="bipartite">Bipartite</button>
-      <button class="tb" data-v="person">People</button>
-      <button class="tb" data-v="dataset">Datasets</button>
-    </div>
+    <div class="plbl">View</div>
     <span class="clbl">Color By</span>
     <div class="trow" id="ctog">
-      <button class="tb on" data-c="type">Type</button>
-      <button class="tb lv" data-c="community">Louvain</button>
-      <button class="tb rs" data-c="risk">Risk</button>
+      <button class="tb on" data-c="kind">Kind</button>
+      <button class="tb" data-c="wp">WP</button>
+      <button class="tb" data-c="orphan">Orphans</button>
+      <button class="tb" data-c="hierarchy">Hierarchy</button>
     </div>
     <label class="ckrow"><input type="checkbox" id="cklabels" checked><span>Show labels</span></label>
-    <label class="ckrow"><input type="checkbox" id="ckorgs"><span>Include organizations</span></label>
-    <div style="margin-top:8px">
-      <span class="clbl">Min. shared connections (projection)</span>
-      <input type="range" id="sshared" min="1" max="10" value="1">
-      <div class="sval" id="sval">≥ 1</div>
-    </div>
+    <label class="ckrow"><input type="checkbox" id="ckpeople"><span>People/Orgs</span></label>
+    <label class="ckrow"><input type="checkbox" id="ckhowto" checked><span>HowTo / Steps</span></label>
+    <label class="ckrow"><input type="checkbox" id="ckaux"><span>Places, Properties, etc</span></label>
   </div>
   <div class="pnl hide" id="pact">
     <div class="plbl">Actions</div>
-    <button class="btn primary" id="brelayout">↺  Re-run Layout</button>
-    <button class="btn" id="breset">⌖  Reset Camera</button>
-    <button class="btn" id="bexport">↓  Export GEXF</button>
-    <button class="btn" id="bbundle" style="border-color:var(--purple);color:var(--purple)">⬡  Export data.json Bundle</button>
-    <div style="font-size:10px;color:var(--dim);margin-top:6px;line-height:1.5">
-      Exports all loaded files as a bundle for GitHub hosting. Upload the result as <code style="color:var(--cyan)">data.json</code> in your repo.
-    </div>
+    <button class="btn primary" id="brelayout">↺ Re-run Layout</button>
+    <button class="btn" id="breset">⌖ Reset Camera</button>
+    <button class="btn" id="bexport">↓ Export GEXF</button>
   </div>
   <div class="pnl hide" id="pleg">
     <div class="plbl">Legend</div>
-    <div class="litem"><div class="ldot" style="background:var(--cyan)"></div><span>Dataset</span></div>
-    <div class="litem"><div class="ldot" style="background:var(--amber)"></div><span>Person</span></div>
-    <div class="litem"><div class="ldot" style="background:var(--green)"></div><span>Organization</span></div>
-    <div style="margin-top:8px;font-size:10px;color:var(--dim);line-height:1.6">
-      Risk color: <span style="color:var(--green)">■</span> Low &nbsp;
-      <span style="color:var(--amber)">■</span> Med &nbsp;
-      <span style="color:var(--red)">■</span> High
-    </div>
+    <div class="litem"><div class="ldot" style="background:#f59e0b"></div><span>Task</span></div>
+    <div class="litem"><div class="ldot" style="background:#a78bfa"></div><span>Deliverable</span></div>
+    <div class="litem"><div class="ldot" style="background:#38bdf8"></div><span>Dataset</span></div>
+    <div class="litem"><div class="ldot" style="background:#34d399"></div><span>Document</span></div>
+    <div class="litem"><div class="ldot" style="background:#f472b6"></div><span>HowTo / Step</span></div>
+    <div class="litem"><div class="ldot" style="background:#7dd3fc"></div><span>Instrument</span></div>
+    <div class="litem"><div class="ldot" style="background:#fbbf24"></div><span>Platform</span></div>
+    <div class="litem"><div class="ldot" style="background:#94a3b8"></div><span>Person / Org</span></div>
   </div>
 </aside>
 <div id="gwrap">
   <div id="splash">
     <div class="scard" id="scard">
       <div class="swave">🌊</div>
-      <h2>Drop JSON Files to Begin</h2>
-      <p id="splash-msg">Loading shared data...</p>
+      <h2>MARCO-BOLO Catalog</h2>
+      <p id="splash-msg">Loading…</p>
     </div>
   </div>
   <div id="smount"></div>
+  <div id="detail" class="hide">
+    <div id="detail-head">
+      <div id="detail-title">—</div>
+      <button id="detail-close" title="close (Esc)">×</button>
+    </div>
+    <div id="detail-body"></div>
+  </div>
 </div>
 <footer>
   <span>NODES <span class="fv" id="fn">--</span></span>
   <span>EDGES <span class="fv" id="fe">--</span></span>
-  <span>FILES <span class="fv" id="ff">0</span></span>
+  <span>VIEW <span class="fv" id="fv">all WPs</span></span>
   <span id="lst">READY</span>
 </footer>
 <div id="tip"></div>
@@ -192,848 +277,683 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
 <script src="https://cdnjs.cloudflare.com/ajax/libs/graphology/0.25.4/graphology.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sigma.js/2.4.0/sigma.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-
 <script>
 'use strict';
 
-// ═══════════════════════════════════════════════════════
-//  PALETTE & ROLE WEIGHTS
-// ═══════════════════════════════════════════════════════
-const COL = {
-  dataset:'#38bdf8', person:'#f59e0b', org:'#34d399',
-  rLow:'#34d399', rMed:'#f59e0b', rHigh:'#f87171', edge:'#1a2e4a',
-  comm:['#38bdf8','#f59e0b','#a78bfa','#34d399','#f87171',
-        '#fb923c','#e879f9','#2dd4bf','#facc15','#60a5fa',
-        '#a3e635','#f472b6','#818cf8','#fca5a5','#6ee7b7'],
+// ═══════════════════════════════════════════════════════════════════════════
+//  PALETTE — colours by entity kind. Chosen to match Steve's sdiggs/kg-explorer
+//  amber/cyan/amber scheme while extending for MBO's richer @type vocabulary.
+// ═══════════════════════════════════════════════════════════════════════════
+const COL_KIND = {
+  task: '#f59e0b', deliverable: '#a78bfa', action: '#fb923c',
+  dataset: '#38bdf8', datadownload: '#22d3ee',
+  document: '#34d399',
+  howto: '#f472b6',
+  instrument: '#7dd3fc', platform: '#fbbf24',
+  person: '#94a3b8', org: '#cbd5e1',
+  place: '#86efac', property: '#475569',
+  software: '#c084fc', service: '#e879f9',
+  contact: '#64748b', term: '#475569',
+  embargo: '#fb7185', grant: '#fde047', taxon: '#a3e635',
+  audience: '#475569', comment: '#475569', license: '#475569',
+  other: '#475569',
 };
+const COL_WP = {
+  WP1:'#38bdf8', WP2:'#34d399', WP3:'#fbbf24', WP4:'#f472b6',
+  WP5:'#a78bfa', WP6:'#fb7185', WP7:'#f59e0b', null:'#475569',
+};
+const COL_EDGE = 'rgba(74,101,128,.5)';
 
-// ═══════════════════════════════════════════════════════
-//  APP STATE
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════════════
 const S = {
-  files:[], graph:null, renderer:null, communities:{},
-  view:'bipartite', color:'type',
-  labels:true, orgs:false, minShared:1,
+  bundles: [],
+  nodes: [], edges: [],
+  graph: null, renderer: null,
+  wpFilter: 'all',
+  colorMode: 'kind',
+  labels: true,
+  showPeople: false,
+  showHowto: true,
+  showAux: false,
+  outProduction: {},   // uid -> count of production-edges out
 };
+const PRODUCTION_EDGES = new Set(['result','step','itemListElement',
+                                  'distribution','encodesCreativeWork']);
 
-// ═══════════════════════════════════════════════════════
-//  UNIVERSAL SCHEMA ACCESSORS
-//  Handles v1 (entities/relationships), v2.0, v2.2,
-//  v2.x-extracted (primary_dataset_name / manages[]),
-//  v3 (basicInformation / responsibilitiesAndRoles),
-//  v4 (dataGovernance / riskAssessment.rStarCompositeScore)
-// ═══════════════════════════════════════════════════════
-
-function personName(p) {
-  return p.name
-      || p.basicInformation?.name
-      || p.properties?.name
-      || p.Title
-      || 'Unknown';
-}
-
-function personOrg(p) {
-  return p.worksForId
-      || p.professionalAffiliation?.primaryEmployer
-      || p.professionalAffiliation?.primaryOrganizationId
-      || p.properties?.department
-      || p.Organization_or_Primary_Organization
-      || '';
-}
-
-function personOrcid(p) {
-  return p.orcid
-      || p.persistentIdentifiers?.ORCID
-      || p.persistentIdentifiers?.orcid
-      || p.properties?.orcid
-      || '';
-}
-
-function personJobTitle(p) {
-  return p.jobTitle
-      || p.basicInformation?.jobTitle
-      || p.properties?.title
-      || '';
-}
-
-function personSepRisk(p) {
-  // Returns 0-100 or null
-  let v = p.employmentStatus?.currentStatus?.probabilityOfImminentSeparation?.percentage
-       ?? p.employmentStatus?.probabilityOfImminentSeparation?.percentage
-       ?? p.careerStatus?.separationRisk?.probabilityNextYear
-       ?? p.properties?.status?.retirementRisk;
-  if (v == null) return null;
-  if (typeof v === 'string') v = parseFloat(v.replace('%',''));
-  if (!isNaN(v) && v <= 1.0) v = v * 100;
-  return isNaN(v) ? null : Math.round(v);
-}
-
-function personKnowledgeLevel(p) {
-  return p.institutionalKnowledgeLevel
-      || p.expertise?.institutionalKnowledgeLevel
-      || p.properties?.expertise?.level
-      || '';
-}
-
-function personManagedDatasets(p) {
-  const ids = new Set();
-  // v2-extracted: manages[] and managedDatasets[]
-  for (const arr of [p.manages, p.managedDatasets]) {
-    if (Array.isArray(arr)) arr.forEach(x => { if (typeof x === 'string') ids.add(x); });
+// ═══════════════════════════════════════════════════════════════════════════
+//  INGESTION — accepts the build_data.py bundle shape
+// ═══════════════════════════════════════════════════════════════════════════
+function ingest(bundle, name){
+  if (!bundle || !Array.isArray(bundle.nodes)) {
+    throw new Error('Not an MBO catalog bundle (missing nodes[])');
   }
-  // v2.0/2.2: criticalResponsibilities [{dataset_xxx: role}, ...]
-  if (Array.isArray(p.criticalResponsibilities)) {
-    p.criticalResponsibilities.forEach(r => {
-      if (r && typeof r === 'object') {
-        Object.keys(r).forEach(k => { if (k.startsWith('dataset')) ids.add(k); });
-      }
-    });
-  }
-  // v3/v4: responsibilitiesAndRoles.criticalDatasets [{datasetId, role}] or [id strings]
-  const cds = p.responsibilitiesAndRoles?.criticalDatasets
-           || p.responsibilitiesAndRoles?.managedDatasets;
-  if (Array.isArray(cds)) {
-    cds.forEach(cd => {
-      if (typeof cd === 'string') ids.add(cd);
-      if (typeof cd === 'object' && cd) {
-        if (cd.datasetId) ids.add(cd.datasetId);
-        if (cd.id) ids.add(cd.id);
-      }
-    });
-  }
-  // Old format: Associated_Datasets[]
-  if (Array.isArray(p.Associated_Datasets)) {
-    p.Associated_Datasets.forEach(x => { if (typeof x === 'string') ids.add(x); });
-  }
-  return [...ids];
-}
+  S.bundles.push({name, nodes: bundle.nodes.length, edges: (bundle.edges||[]).length,
+                  wp_stats: bundle.wp_stats || {}, orphans: bundle.orphans || {}});
+  // merge — later bundles override earlier on duplicate id
+  const byId = {}; S.nodes.forEach(n => byId[n.id] = n);
+  bundle.nodes.forEach(n => { byId[n.id] = n; });
+  S.nodes = Object.values(byId);
+  // edges: concat (sigma de-dups by (from,to) pair)
+  S.edges = (S.edges || []).concat(bundle.edges || []);
+  // invalidate reverse-index; rebuilt lazily on first openDetail()
+  REV_INDEX = null;
 
-function datasetName(d) {
-  return d.primary_dataset_name  // v2-extracted interviews
-      || d.name                  // v2.0/2.2
-      || d.basicInformation?.name // v3/v4
-      || d.properties?.name      // v1
-      || 'Unnamed Dataset';
-}
-
-function datasetStewardIds(d) {
-  const ids = new Set();
-  if (d.dataStewardId) ids.add(d.dataStewardId);
-  if (d.dataGovernance?.dataStewardId) ids.add(d.dataGovernance.dataStewardId);
-  if (d.dataGovernance?.dataProducerId) ids.add(d.dataGovernance.dataProducerId);
-  const rp1 = d.criticalDependencies?.requiredPeople;
-  const rp2 = d.dependencies?.requiredPeople;
-  if (Array.isArray(rp1)) rp1.forEach(x => { if (typeof x === 'string') ids.add(x); });
-  if (Array.isArray(rp2)) rp2.forEach(x => { if (typeof x === 'string') ids.add(x); });
-  return [...ids];
-}
-
-function datasetRiskText(d) {
-  // Returns "Critical" | "High" | "Medium" | "Low" | null
-  return d.riskAssessment?.overallRiskLevel
-      || d.criticalityAssessment?.riskProbability
-      || d.criticalityAssessment?.preservationPriority
-      || d.properties?.metrics?.riskLevel
-      || null;
-}
-
-function datasetRStarScore(d) {
-  const v = d.riskAssessment?.rStarCompositeScore
-         ?? d.rStarScore ?? d.rstar_score;
-  if (v == null) return null;
-  return parseFloat(v) || null;
-}
-
-function riskTextToNum(txt) {
-  if (!txt) return null;
-  const t = txt.toLowerCase();
-  if (t.includes('critical')) return 95;
-  if (t.includes('high'))     return 75;
-  if (t.includes('medium') || t.includes('med')) return 45;
-  if (t.includes('low'))      return 20;
-  return null;
-}
-
-function riskToColor(score) {
-  // score 0-100
-  if (score == null) return null;
-  if (score >= 70) return COL.rHigh;
-  if (score >= 40) return lerp(COL.rMed, COL.rHigh, (score-40)/30);
-  return lerp(COL.rLow, COL.rMed, score/40);
-}
-
-// ═══════════════════════════════════════════════════════
-//  SCHEMA DETECTION & FILE PARSING
-// ═══════════════════════════════════════════════════════
-
-function detectSchemaVersion(raw) {
-  const ver = raw.metadata?.version;
-  if (raw.entities && raw.relationships) return 'v1';
-  if (ver === '1.0' && raw.entities) return 'v1';
-  const p0 = (raw.people||[])[0] || {};
-  if (p0.basicInformation || p0.responsibilitiesAndRoles || p0.careerStatus) {
-    return ver && parseFloat(ver) >= 4 ? 'v4' : 'v3';
-  }
-  if (p0.manages || p0.managedDatasets) return 'v2x'; // extracted interviews
-  return 'v2';
-}
-
-function parseFile(raw, filename) {
-  const schema = detectSchemaVersion(raw);
-  const people = [], datasets = [], orgs = [], edges = [];
-
-  if (schema === 'v1') {
-    // entities array + relationships array
-    const emap = {};
-    (raw.entities || []).forEach(e => { emap[e.id] = e; });
-
-    (raw.entities || []).forEach(e => {
-      const p = e.properties || {};
-      if (e.type === 'Person') {
-        people.push({
-          id: e.id, name: p.name || 'Unknown',
-          jobTitle: p.title || '', org: p.department || '',
-          sepRisk: p.status?.retirementRisk != null ? Math.round(p.status.retirementRisk * 100) : null,
-          knowledgeLevel: p.reputation || '',
-          manages: [],
-          schema,
-        });
-      } else if (e.type === 'Dataset') {
-        datasets.push({
-          id: e.id, title: p.name || 'Unnamed',
-          stewardIds: [],
-          riskScore: riskTextToNum(p.metrics?.riskLevel),
-          riskText: p.metrics?.riskLevel || '',
-          rstarScore: null,
-          schema,
-        });
-      } else if (e.type === 'Organization') {
-        orgs.push({ id: e.id, name: p.name || e.id, schema });
-      }
-    });
-
-    (raw.relationships || []).forEach(r => {
-      if (r.type === 'MANAGES')
-        edges.push({ from: r.source, to: r.target, label: 'manages', weight: 3 });
-      else if (r.type === 'WORKS_FOR')
-        edges.push({ from: r.source, to: r.target, label: 'works_for', weight: 1 });
-      else if (r.type === 'DEPENDS_ON')
-        edges.push({ from: r.source, to: r.target, label: 'depends_on', weight: 2 });
-    });
-
-  } else {
-    // v2 / v2x / v3 / v4 — all have separate people[], datasets[], organizations[]
-    (raw.people || []).forEach(p => {
-      people.push({
-        id: p.id,
-        name: personName(p),
-        jobTitle: personJobTitle(p),
-        org: personOrg(p),
-        sepRisk: personSepRisk(p),
-        knowledgeLevel: personKnowledgeLevel(p),
-        manages: personManagedDatasets(p),
-        schema,
-      });
-    });
-
-    (raw.datasets || []).forEach(d => {
-      datasets.push({
-        id: d.id,
-        title: datasetName(d),
-        stewardIds: datasetStewardIds(d),
-        riskScore: datasetRStarScore(d) ?? riskTextToNum(datasetRiskText(d)),
-        riskText: datasetRiskText(d) || '',
-        rstarScore: datasetRStarScore(d),
-        schema,
-      });
-    });
-
-    (raw.organizations || []).forEach(o => {
-      orgs.push({ id: o.id, name: o.name || o.id, schema });
-    });
-
-    // v1-style explicit dependency edges (some v3/v4 files have these too)
-    (raw.dependencies || []).forEach(dep => {
-      if (dep.sourceId && dep.targetId)
-        edges.push({ from: dep.sourceId, to: dep.targetId, label: dep.type || 'depends', weight: 1 });
-    });
-  }
-
-  return { people, datasets, orgs, edges, schema, filename };
-}
-
-// ═══════════════════════════════════════════════════════
-//  COMMUNITY DETECTION (label propagation)
-// ═══════════════════════════════════════════════════════
-function detectCommunities(g) {
-  if (g.order < 2) return {};
-  const lbl = {};
-  g.forEachNode(n => { lbl[n] = n; });
-  for (let i = 0; i < 60; i++) {
-    const nodes = g.nodes().sort(() => Math.random() - 0.5);
-    let changed = false;
-    for (const n of nodes) {
-      const freq = {};
-      g.forEachNeighbor(n, nb => { const l = lbl[nb]; freq[l] = (freq[l]||0)+1; });
-      if (Object.keys(freq).length) {
-        const best = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0];
-        if (best !== lbl[n]) { lbl[n] = best; changed = true; }
-      }
+  // recompute out-production counts
+  S.outProduction = {};
+  for (const e of S.edges) {
+    if (PRODUCTION_EDGES.has(e.kind)) {
+      S.outProduction[e.from] = (S.outProduction[e.from] || 0) + 1;
     }
-    if (!changed) break;
   }
-  const uniq = [...new Set(Object.values(lbl))];
-  const res = {};
-  g.forEachNode(n => { res[n] = uniq.indexOf(lbl[n]); });
-  return res;
+
+  if (bundle.wp_stats) renderHeatmap(bundle.wp_stats);
 }
 
-// ═══════════════════════════════════════════════════════
-//  FORCE LAYOUT (D3)
-// ═══════════════════════════════════════════════════════
-function applyLayout(g) {
+// ═══════════════════════════════════════════════════════════════════════════
+//  HEATMAP — WP × kind grid in the side panel
+// ═══════════════════════════════════════════════════════════════════════════
+function renderHeatmap(stats){
+  const wps = ['WP1','WP2','WP3','WP4','WP5','WP6','WP7'];
+  const rows = [
+    ['Tasks',       ['task']],
+    ['Deliv',       ['deliverable']],
+    ['Data',        ['dataset','datadownload']],
+    ['Docs',        ['document']],
+    ['HowTo',       ['howto']],
+    ['Method+',     ['howto','instrument','platform','software']],
+  ];
+  const sumK = (wpStat, keys) => keys.reduce((a,k) => a + (wpStat?.[k]||0), 0);
+  // per-row max for shading
+  const rowMax = rows.map(([_, keys]) =>
+    Math.max(1, ...wps.map(w => sumK(stats[w], keys))));
+  let h = '<div class="wphm"><div></div>';
+  for (const w of wps) h += `<div class="wphm-h">${w.slice(2)}</div>`;
+  rows.forEach(([lbl, keys], ri) => {
+    h += `<div class="wphm-l">${lbl}</div>`;
+    for (const w of wps) {
+      const v = sumK(stats[w], keys);
+      const r = v / rowMax[ri];
+      const bg = v === 0 ? '#0a1f30'
+                          : `rgb(${Math.round(20+75*r)},${Math.round(80+118*r)},${Math.round(110+122*r)})`;
+      const fg = r > 0.4 ? '#08101e' : '#b8cce4';
+      h += `<div class="wphm-c" style="background:${bg};color:${fg}">${v}</div>`;
+    }
+  });
+  h += '</div>';
+  qs('#wphm-host').innerHTML = h;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  FILTERING — predicate used by buildGraph()
+// ═══════════════════════════════════════════════════════════════════════════
+const AUX_KINDS = new Set(['place','property','term','audience','comment',
+                           'license','grant','contact','datadownload','taxon']);
+function nodeVisible(n){
+  if (S.wpFilter !== 'all') {
+    if (S.wpFilter === 'none' && (n.wp || (n.wps && n.wps.length))) return false;
+    if (S.wpFilter !== 'none') {
+      // Match against the full wps[] (multi-WP) when available, else fall
+      // back to primary wp. A Person credited in WP1 and WP6 should show
+      // up under either filter.
+      const list = (n.wps && n.wps.length) ? n.wps : (n.wp ? [n.wp] : []);
+      if (!list.includes(S.wpFilter)) return false;
+    }
+  }
+  if (!S.showPeople && (n.kind === 'person' || n.kind === 'org')) return false;
+  if (!S.showHowto && n.kind === 'howto') return false;
+  if (!S.showAux && AUX_KINDS.has(n.kind)) return false;
+  const q = (qs('#qsearch')?.value || '').toLowerCase().trim();
+  if (q) {
+    if (!(n.id.toLowerCase().includes(q) || (n.label||'').toLowerCase().includes(q)))
+      return false;
+  }
+  return true;
+}
+
+function colorFor(n, inHierarchy){
+  if (S.colorMode === 'wp') return COL_WP[n.wp] || COL_WP[null];
+  if (S.colorMode === 'orphan') {
+    const isHub = n.kind === 'task' || n.kind === 'deliverable';
+    if (isHub && !S.outProduction[n.id]) return '#fb7185';   // red: orphan
+    if (isHub) return '#34d399';                              // green: has products
+    return '#475569';                                          // dim: not a hub
+  }
+  if (S.colorMode === 'hierarchy') {
+    // Members of the action hierarchy get their normal kind color; everyone
+    // else fades into the background so the tree pops.
+    if (inHierarchy) return COL_KIND[n.kind] || COL_KIND.other;
+    return '#1e3050';   // very dim — barely above the background
+  }
+  return COL_KIND[n.kind] || COL_KIND.other;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LAYOUT — d3 force, ported from Steve's
+// ═══════════════════════════════════════════════════════════════════════════
+function applyLayout(g){
   const nodes = [], links = [];
-  g.forEachNode((n, a) => nodes.push({ id: n, sz: a.size || 6 }));
-  g.forEachEdge((e, a, src, tgt) => links.push({ source: src, target: tgt, w: a.weight || 1 }));
-  const nmap = Object.fromEntries(nodes.map(n => [n.id, n]));
+  g.forEachNode((n, a) => nodes.push({id:n, sz:a.size||5}));
+  g.forEachEdge((e, a, s, t) => links.push({source:s, target:t, w:a.weight||1}));
   const sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id).distance(70).strength(d => Math.min(.5, d.w*.1)))
-    .force('charge', d3.forceManyBody().strength(n => -100 - n.sz * 8))
+    .force('link',   d3.forceLink(links).id(d=>d.id).distance(55).strength(d=>Math.min(.5, d.w*.12)))
+    .force('charge', d3.forceManyBody().strength(n => -110 - n.sz*8))
     .force('center', d3.forceCenter(0, 0))
-    .force('collision', d3.forceCollide(n => n.sz + 4))
+    .force('coll',   d3.forceCollide(n => n.sz + 3))
     .stop();
   sim.tick(Math.min(220, Math.max(80, 400 - g.order)));
+  const nmap = Object.fromEntries(nodes.map(n => [n.id, n]));
   g.forEachNode(n => {
     const nd = nmap[n];
     if (nd) { g.setNodeAttribute(n,'x',nd.x||0); g.setNodeAttribute(n,'y',nd.y||0); }
   });
 }
 
-// ═══════════════════════════════════════════════════════
-//  AGGREGATORS
-// ═══════════════════════════════════════════════════════
-function allPeople()   { const s=new Set(),o=[]; S.files.forEach(f=>{f.people.forEach(p=>{if(!s.has(p.id)){s.add(p.id);o.push(p);}});}); return o; }
-function allDatasets() { const s=new Set(),o=[]; S.files.forEach(f=>{f.datasets.forEach(d=>{if(!s.has(d.id)){s.add(d.id);o.push(d);}});}); return o; }
-function allOrgs()     { const s=new Set(),o=[]; S.files.forEach(f=>{f.orgs.forEach(x=>{if(!s.has(x.id)){s.add(x.id);o.push(x);}});}); return o; }
-function allEdges()    { const o=[]; S.files.forEach(f=>{o.push(...f.edges);}); return o; }
-
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 //  GRAPH BUILD
-// ═══════════════════════════════════════════════════════
-function colorForRisk(node, attrs) {
-  const score = attrs.riskScore ?? attrs.sepRisk;
-  return riskToColor(score) || (attrs.ntype === 'dataset' ? COL.dataset : attrs.ntype === 'org' ? COL.org : COL.person);
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Admin edges: real in the data but visually unhelpful — every entity points
+// at the Action it was entered under and the Person who entered it. Leaving
+// them in the graph makes those admin nodes into giant artificial hubs.
+// Filtered from the graph build; still visible per-node in the side panel's
+// Provenance section.
+const ADMIN_EDGES = new Set(['wasResultOf', 'metadataEnteredBy']);
+
+// Action-action `result` edges encode the parent→child Action hierarchy
+// (e.g. Task 4.4 → seatrial echosounder). Highlighted in the Hierarchy
+// color mode and given heavier layout weight so the tree pulls together.
+function isHierarchyEdge(e, nodesById){
+  if (e.kind !== 'result') return false;
+  const f = nodesById[e.from], t = nodesById[e.to];
+  if (!f || !t) return false;
+  const ACTION_KINDS = new Set(['task','deliverable','action']);
+  return ACTION_KINDS.has(f.kind) && ACTION_KINDS.has(t.kind);
 }
 
-function buildGraph() {
-  const g = new graphology.Graph({ multi: false });
-  const ppl = allPeople(), ds = allDatasets(), orgs = allOrgs(), edges = allEdges();
+function buildGraph(){
+  const g = new graphology.Graph({multi:false});
+  const nodesById = Object.fromEntries(S.nodes.map(n => [n.id, n]));
 
-  // ── ADD NODES ────────────────────────────────────────
-  if (S.view !== 'person') {
-    ds.forEach(d => {
-      g.addNode('ds|'+d.id, {
-        label: d.title, ntype:'dataset',
-        riskScore: d.riskScore, riskText: d.riskText, rstarScore: d.rstarScore,
-        schema: d.schema,
-        color: COL.dataset, size: 8, x:0, y:0,
-      });
+  for (const n of S.nodes) {
+    if (!nodeVisible(n)) continue;
+    const isHub = n.kind === 'task' || n.kind === 'deliverable';
+    g.addNode(n.id, {
+      label: n.label || n.id,
+      kind: n.kind, wp: n.wp,
+      _ref: n,
+      size: isHub ? 7 : 4,
+      color: colorFor(n, /*hierarchy_in_tree*/false),
+      x: 0, y: 0,
     });
   }
 
-  if (S.view !== 'dataset') {
-    ppl.forEach(p => {
-      const pk = 'p|'+p.id;
-      if (!g.hasNode(pk)) {
-        g.addNode(pk, {
-          label: p.name, ntype:'person',
-          jobTitle: p.jobTitle, org: p.org,
-          sepRisk: p.sepRisk, knowledgeLevel: p.knowledgeLevel,
-          riskScore: p.sepRisk, schema: p.schema,
-          color: COL.person, size:6, x:0, y:0,
-        });
-      }
-      if (S.orgs && p.org) {
-        const oid = 'org|'+slug(p.org);
-        if (!g.hasNode(oid)) {
-          const orgObj = orgs.find(o => o.id === p.org);
-          g.addNode(oid, { label: orgObj?.name || p.org, ntype:'org', color:COL.org, size:5, x:0, y:0 });
-        }
-        tryEdge(g, pk, oid, { label:'affiliated', weight:.4, color: COL.edge });
-      }
+  // First pass: figure out which nodes are part of the action hierarchy
+  // (i.e. participate in any parent→child action edge). Used by the
+  // Hierarchy color mode to brighten participants and dim everyone else.
+  const inHierarchy = new Set();
+  for (const e of S.edges) {
+    if (isHierarchyEdge(e, nodesById)) {
+      inHierarchy.add(e.from);
+      inHierarchy.add(e.to);
+    }
+  }
+  S.inHierarchy = inHierarchy;
+
+  // Recolor every node now that we know hierarchy membership.
+  if (S.colorMode === 'hierarchy') {
+    g.forEachNode((n, a) => {
+      g.setNodeAttribute(n, 'color', colorFor(a._ref, inHierarchy.has(n)));
     });
   }
 
-  // ── ADD EDGES ────────────────────────────────────────
-  if (S.view === 'bipartite') {
-    // 1. person.manages[] → datasets
-    ppl.forEach(p => {
-      p.manages.forEach(dsId => {
-        const pk = 'p|'+p.id, dk = 'ds|'+dsId;
-        if (g.hasNode(pk) && g.hasNode(dk))
-          tryEdge(g, pk, dk, { label:'manages', weight:3, color:COL.edge });
-      });
-    });
-    // 2. dataset.stewardIds[] → people
-    ds.forEach(d => {
-      d.stewardIds.forEach(pid => {
-        const dk = 'ds|'+d.id, pk = 'p|'+pid;
-        if (g.hasNode(dk) && g.hasNode(pk))
-          tryEdge(g, dk, pk, { label:'steward', weight:4, color:COL.edge });
-      });
-    });
-    // 3. explicit edges from v1 relationships or v3/v4 dependencies
-    edges.forEach(e => {
-      const sk = nodeKey(e.from, g), tk = nodeKey(e.to, g);
-      if (sk && tk) tryEdge(g, sk, tk, { label:e.label||'', weight:e.weight||1, color:COL.edge });
-    });
+  for (const e of S.edges) {
+    if (ADMIN_EDGES.has(e.kind)) continue;   // do not render admin edges
+    if (!g.hasNode(e.from) || !g.hasNode(e.to)) continue;
+    if (g.hasEdge(e.from, e.to) || g.hasEdge(e.to, e.from)) continue;
 
-  } else if (S.view === 'person') {
-    // Project onto people: share dataset → edge
-    const pds = {};
-    ppl.forEach(p => {
-      const pk = 'p|'+p.id;
-      pds[pk] = new Set(p.manages);
-      ds.forEach(d => {
-        if (d.stewardIds.includes(p.id)) pds[pk].add(d.id);
-      });
-    });
-    const keys = Object.keys(pds).filter(k => g.hasNode(k));
-    for (let i = 0; i < keys.length; i++)
-      for (let j = i+1; j < keys.length; j++) {
-        const shared = [...pds[keys[i]]].filter(x => pds[keys[j]].has(x)).length;
-        if (shared >= S.minShared)
-          tryEdge(g, keys[i], keys[j], { label: shared+' shared', weight:shared, color:COL.edge });
-      }
+    const hierEdge = isHierarchyEdge(e, nodesById);
+    const prodEdge = PRODUCTION_EDGES.has(e.kind);
 
-  } else { // dataset projection
-    for (let i = 0; i < ds.length; i++)
-      for (let j = i+1; j < ds.length; j++) {
-        const ai = new Set([...ds[i].stewardIds, ...ds[i].stewardIds]);
-        const shared = ds[j].stewardIds.filter(x => ai.has(x)).length;
-        const ak='ds|'+ds[i].id, bk='ds|'+ds[j].id;
-        if (shared >= S.minShared && g.hasNode(ak) && g.hasNode(bk))
-          tryEdge(g, ak, bk, { label:shared+' people', weight:shared, color:COL.edge });
-      }
+    // weights drive the d3 force layout link strength; heavier = pulls tighter
+    let weight = 1;
+    if (hierEdge) weight = 5;        // strongest pull, action hierarchy
+    else if (prodEdge) weight = 3;   // production edges (result→dataset, etc.)
+
+    // color depends on the mode
+    let color = COL_EDGE;
+    if (S.colorMode === 'hierarchy') {
+      color = hierEdge ? '#fbbf24' : 'rgba(74,101,128,.15)';   // bright amber for tree, very dim for rest
+    } else if (hierEdge) {
+      color = '#7d6a3a';     // muted gold so hierarchy is still visible everywhere
+    } else if (prodEdge) {
+      color = '#3d5a80';
+    }
+
+    g.addEdge(e.from, e.to, {
+      label: e.kind,
+      weight, color,
+      hier: hierEdge,
+    });
   }
-
-  // ── DEGREE-BASED SIZE ────────────────────────────────
-  g.forEachNode(n => {
+  // size hubs by degree
+  g.forEachNode((n, a) => {
     const deg = g.degree(n);
-    g.setNodeAttribute(n, 'size', Math.max(4, Math.min(26, 4 + deg * 1.5)));
+    const baseSize = (a.kind === 'task' || a.kind === 'deliverable') ? 7 : 4;
+    g.setNodeAttribute(n, 'size', Math.max(baseSize,
+      Math.min(22, baseSize + Math.sqrt(deg) * 1.6)));
   });
-
-  // ── COMMUNITIES ──────────────────────────────────────
-  S.communities = detectCommunities(g);
-
-  // ── COLORS ───────────────────────────────────────────
-  applyColors(g);
   return g;
 }
 
-function nodeKey(id, g) {
-  // Try to find which prefix (ds| or p| or org|) matches the id in the graph
-  for (const pref of ['p|','ds|','org|']) {
-    const k = pref + id;
-    if (g.hasNode(k)) return k;
-  }
-  if (g.hasNode(id)) return id;
-  return null;
-}
-
-function applyColors(g) {
-  g.forEachNode((n, a) => {
-    let col;
-    if (S.color === 'type')      col = COL[a.ntype] || COL.dataset;
-    else if (S.color === 'community') col = COL.comm[(S.communities[n]||0) % COL.comm.length];
-    else col = riskToColor(a.riskScore) || COL[a.ntype] || COL.dataset;
-    g.setNodeAttribute(n, 'color', col);
-  });
-}
-
-function tryEdge(g, a, b, attrs) {
-  if (g.hasNode(a) && g.hasNode(b) && !g.hasEdge(a,b) && !g.hasEdge(b,a))
-    g.addEdge(a, b, attrs);
-}
-
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 //  RENDER
-// ═══════════════════════════════════════════════════════
-function render() {
+// ═══════════════════════════════════════════════════════════════════════════
+function render(){
   if (S.renderer) { S.renderer.kill(); S.renderer = null; }
   const g = buildGraph();
   S.graph = g;
-  setSt('running','COMPUTING LAYOUT...');
-
+  setSt('running', 'COMPUTING LAYOUT…');
   requestAnimationFrame(() => {
     applyLayout(g);
-    setSt('done','READY');
-
-    const ppl=allPeople(), ds=allDatasets();
-    qs('#sn').textContent=g.order; qs('#se').textContent=g.size;
-    qs('#sd').textContent=ds.length; qs('#sp').textContent=ppl.length;
-    qs('#fn').textContent=g.order; qs('#fe').textContent=g.size;
-
-    const renderer = new Sigma(g, qs('#smount'), {
-      renderEdgeLabels:false, defaultEdgeColor:COL.edge,
-      labelFont:'Space Mono,monospace', labelSize:11, labelColor:{color:'#b8cce4'},
-      minCameraRatio:.05, maxCameraRatio:15,
-      nodeReducer:(n,d)=>({...d, label:S.labels?(d.label||''):''}),
-      edgeReducer:(e,d)=>({...d, size:Math.max(.4,Math.min(4,(d.weight||1)*.6))}),
+    setSt('done', 'READY');
+    qs('#sn').textContent = g.order;
+    qs('#se').textContent = g.size;
+    qs('#fn').textContent = g.order;
+    qs('#fe').textContent = g.size;
+    qs('#fv').textContent = S.wpFilter === 'all' ? 'all WPs' : S.wpFilter;
+    let ds = 0, ac = 0;
+    g.forEachNode((n, a) => {
+      if (a.kind === 'dataset' || a.kind === 'datadownload') ds++;
+      if (['task','deliverable','action'].includes(a.kind)) ac++;
     });
+    qs('#sd').textContent = ds;
+    qs('#sa').textContent = ac;
 
-    const tip = qs('#tip');
-
-    renderer.on('enterNode', ({node}) => {
+    const r = new Sigma(g, qs('#smount'), {
+      renderEdgeLabels: false,
+      defaultEdgeColor: COL_EDGE,
+      labelFont: 'Space Mono,monospace',
+      labelSize: 11,
+      labelColor: {color:'#b8cce4'},
+      minCameraRatio:.05, maxCameraRatio:15,
+      nodeReducer:(n,d) => ({...d, label: S.labels ? (d.label||'') : ''}),
+      edgeReducer:(e,d) => ({...d, size: Math.max(.4, Math.min(3.5, (d.weight||1)*.5))}),
+    });
+    r.on('enterNode', ({node}) => {
       const a = g.getNodeAttributes(node);
+      const n = a._ref;
+      // Minimal hover tooltip — click for the full detail panel.
       let h = `<div class="ttl">${esc(a.label||node)}</div>`;
-      h += `<div class="tr"><span class="tk">Type</span><span class="tv">${a.ntype}</span></div>`;
-      if (a.schema) h += `<div class="tr"><span class="tk">Schema</span><span class="tv">${a.schema}</span></div>`;
-      h += `<div class="tr"><span class="tk">Degree</span><span class="tv">${g.degree(node)}</span></div>`;
-      if (a.jobTitle) h += `<div class="tr"><span class="tk">Role</span><span class="tv">${esc(a.jobTitle)}</span></div>`;
-      if (a.org) h += `<div class="tr"><span class="tk">Org ID</span><span class="tv">${esc(a.org)}</span></div>`;
-      if (a.knowledgeLevel) h += `<div class="tr"><span class="tk">Knowledge</span><span class="tv">${esc(a.knowledgeLevel)}</span></div>`;
-      if (a.riskText) h += `<div class="tr"><span class="tk">Risk Level</span><span class="tv">${esc(a.riskText)}</span></div>`;
-      const score = a.rstarScore ?? a.riskScore ?? a.sepRisk;
-      if (score != null) {
-        const col = riskToColor(score) || '#888';
-        h += `<div class="trbar"><span class="tk">${a.rstarScore!=null?'R* Score':a.ntype==='person'?'Sep. Risk':'Risk Score'}</span><div class="ttrack"><div class="tfill" style="width:${Math.min(100,score)}%;background:${col}"></div></div><span class="tv">${Math.round(score)}</span></div>`;
-      }
-      if (S.communities[node] != null)
-        h += `<div class="tr"><span class="tk">Community</span><span class="tv">${S.communities[node]}</span></div>`;
+      h += row('kind', a.kind);
+      h += row('WP', (a.wp||'(none)'));
+      h += '<div style="font-size:9px;color:var(--dim);margin-top:6px;letter-spacing:.05em">CLICK FOR DETAILS</div>';
+      const tip = qs('#tip');
       tip.innerHTML = h;
       tip.style.display = 'block';
     });
-
-    renderer.on('leaveNode', () => { tip.style.display='none'; });
-    qs('#smount').addEventListener('mousemove', e => {
-      tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px';
-    });
-
-    renderer.on('clickNode', ({node}) => {
-      g.forEachNode(n => g.setNodeAttribute(n,'highlighted',false));
-      g.setNodeAttribute(node,'highlighted',true);
-      g.forEachNeighbor(node, n => g.setNodeAttribute(n,'highlighted',true));
-      renderer.refresh();
-    });
-    renderer.on('clickStage', () => {
-      g.forEachNode(n => g.setNodeAttribute(n,'highlighted',false));
-      renderer.refresh();
-    });
-
-    S.renderer = renderer;
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-//  FILE HANDLING
-// ═══════════════════════════════════════════════════════
-function handleFiles(files) {
-  const arr = [...files].filter(f => f.name.endsWith('.json'));
-  if (!arr.length) return;
-  let done = 0;
-  arr.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      let entry = { name:file.name, people:[], datasets:[], orgs:[], edges:[], schema:'?' };
-      try {
-        // Strip JS-style comments using a state machine that respects string boundaries
-        // (naive regex would wrongly strip // inside URLs like https://...)
-        const raw = JSON.parse(stripComments(e.target.result));
-        entry = { name: file.name, _rawData: raw, ...parseFile(raw, file.name) };
-        addRow(file.name, entry.datasets.length, entry.people.length, entry.schema, true);
-      } catch(ex) {
-        const msg = ex.message || String(ex);
-        addRow(file.name, 0, 0, '?', false, msg);
-        console.warn('Parse error:', file.name, ex);
+    r.on('leaveNode', () => qs('#tip').style.display = 'none');
+    r.on('clickNode', ({node}) => openDetail(node));
+    r.getMouseCaptor().on('mousemovebody', e => {
+      const tip = qs('#tip');
+      if (tip.style.display === 'block') {
+        tip.style.left = (e.x + 14) + 'px';
+        tip.style.top  = (e.y + 14) + 'px';
       }
-      S.files.push(entry);
-      qs('#ff').textContent = S.files.length;
-      if (++done === arr.length) { activate(); updatePrivateBadge(); }
-    };
-    reader.readAsText(file);
+    });
+    S.renderer = r;
   });
 }
 
-function addRow(name, ds, p, schema, ok, errMsg) {
-  const schvCls = {'v1':'v1','v2':'v2','v2x':'v2','v3':'v3','v4':'v4'}[schema]||'';
+function row(k, v){
+  return `<div class="tr"><span class="tk">${k}</span><span class="tv">${v}</span></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  DETAIL SIDE PANEL
+//  Click any node → opens a fixed right-side panel with the full property bag,
+//  outgoing edges (grouped by predicate), and incoming edges (reverse-index).
+//  URLs in property values become external links; mbo_<uuid> references become
+//  internal links that re-open the panel on that target.
+// ═══════════════════════════════════════════════════════════════════════════
+const PROD_KIND_BG = {  // lifted from COL_KIND, used for the kind badge
+  task: '#f59e0b', deliverable: '#a78bfa', action: '#fb923c',
+  dataset: '#38bdf8', datadownload: '#22d3ee', document: '#34d399',
+  howto: '#f472b6', instrument: '#7dd3fc', platform: '#fbbf24',
+  person: '#94a3b8', org: '#cbd5e1', place: '#86efac',
+  property: '#475569', software: '#c084fc', service: '#e879f9',
+  contact: '#64748b', term: '#475569', embargo: '#fb7185',
+  grant: '#fde047', taxon: '#a3e635', other: '#475569',
+};
+
+// Reverse-index: target_id -> [{from, kind}, ...]
+let REV_INDEX = null;
+function rebuildReverseIndex(){
+  REV_INDEX = {};
+  for (const e of S.edges) {
+    (REV_INDEX[e.to] = REV_INDEX[e.to] || []).push({from: e.from, kind: e.kind});
+  }
+}
+
+// Detect URLs in a string and render them as <a> tags. Plain text otherwise.
+const URL_RE = /\b(https?:\/\/[^\s<>"']+|doi:[^\s<>"']+|urn:[^\s<>"']+)/g;
+const MBO_RE = /^(https:\/\/w3id\.org\/marco-bolo\/)?(mbo_[a-z0-9-]+)$/i;
+function renderValue(v, nodesById){
+  if (Array.isArray(v)) {
+    return v.map(x => renderValue(x, nodesById)).join('<br>');
+  }
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  // mbo internal reference? (full URI or bare mbo_uuid)
+  const m = s.match(MBO_RE);
+  if (m) {
+    const uid = m[2];
+    if (nodesById && nodesById[uid]) {
+      const lbl = esc(nodesById[uid].label || uid);
+      return `<a class="dlink-int" href="#" data-mbo="${esc(uid)}" title="${esc(uid)}">${lbl}</a>`;
+    }
+    // unknown internal id — still render as the bare id (not clickable)
+    return esc(s);
+  }
+  // Linkify any URLs found inside the value
+  return esc(s).replace(URL_RE, m => {
+    let href = m;
+    if (m.startsWith('doi:')) href = 'https://doi.org/' + m.slice(4);
+    return `<a href="${href}" target="_blank" rel="noopener">${m}</a>`;
+  });
+}
+
+function openDetail(uid){
+  const n = S.nodes.find(x => x.id === uid);
+  if (!n) return;
+  if (!REV_INDEX) rebuildReverseIndex();
+  const nodesById = Object.fromEntries(S.nodes.map(x => [x.id, x]));
+
+  // ── Header ────────────────────────────────────────────────────────
+  const badge = `<span class="dkindbadge" style="background:${PROD_KIND_BG[n.kind]||'#475569'}">${esc(n.kind)}</span>`;
+  qs('#detail-title').innerHTML = badge + esc(n.label || uid);
+
+  // ── Body sections ─────────────────────────────────────────────────
+  let body = '';
+
+  // Core identity
+  const rorURL = `https://lab.marcobolo-project.eu/csv-to-json-ld/schema-jsonld/${uid}.json`;
+  body += '<div class="dsec">';
+  body += '<div class="dsec-h">Identity</div>';
+  body += `<div class="dprop"><div class="dprop-k">@type</div><div class="dprop-v">${esc(n.type)}</div></div>`;
+  body += `<div class="dprop"><div class="dprop-k">@id</div><div class="dprop-v"><a href="${n.uri||rorURL}" target="_blank" rel="noopener">${esc(uid)}</a></div></div>`;
+  // WP attribution — show all WPs the node is credited under. Primary WP is
+  // first; secondary WPs (if any) appear in parens.
+  const wps = (n.wps && n.wps.length) ? n.wps : (n.wp ? [n.wp] : []);
+  let wpDisplay;
+  if (wps.length === 0) {
+    wpDisplay = '<span style="color:var(--dim)">(none)</span>';
+  } else if (wps.length === 1) {
+    wpDisplay = `<span style="color:${COL_WP[wps[0]]||'#94a3b8'}">${esc(wps[0])}</span>`;
+  } else {
+    wpDisplay = `<span style="color:${COL_WP[wps[0]]||'#94a3b8'}">${esc(wps[0])}</span>` +
+      ` <span style="color:var(--dim);font-size:9px">primary</span>` +
+      ` <span style="color:var(--dim);margin-left:6px">· also: ${wps.slice(1).map(w =>
+          `<span style="color:${COL_WP[w]||'#94a3b8'}">${esc(w)}</span>`).join(', ')}</span>`;
+  }
+  body += `<div class="dprop"><div class="dprop-k">WP</div><div class="dprop-v">${wpDisplay}${n.wp_via?` <div style="color:var(--dim);font-size:9px;margin-top:2px">via ${esc(n.wp_via)}</div>`:''}</div></div>`;
+  body += `<div class="dprop"><div class="dprop-k">JSON-LD</div><div class="dprop-v"><a href="${rorURL}" target="_blank" rel="noopener">view raw</a></div></div>`;
+  body += '</div>';
+
+  // Description / abstract
+  if (n.abstract || n.description) {
+    body += '<div class="dsec"><div class="dsec-h">Description</div>';
+    if (n.abstract) body += `<div class="dprop-v" style="margin-bottom:6px">${renderValue(n.abstract, nodesById)}</div>`;
+    if (n.description && n.description !== n.abstract)
+      body += `<div class="dprop-v" style="color:var(--dim);font-size:10px">${renderValue(n.description, nodesById)}</div>`;
+    body += '</div>';
+  }
+
+  // Other scalar properties (the full bag)
+  const props = n.props || {};
+  const propKeys = Object.keys(props).sort();
+  if (propKeys.length) {
+    body += '<div class="dsec"><div class="dsec-h">Properties</div>';
+    for (const k of propKeys) {
+      const dispKey = k.replace(/^schema:/, '');
+      body += `<div class="dprop"><div class="dprop-k">${esc(dispKey)}</div><div class="dprop-v">${renderValue(props[k], nodesById)}</div></div>`;
+    }
+    body += '</div>';
+  }
+
+  // Outgoing edges, grouped by predicate (skip the lightweight "wasResultOf" /
+  // "metadataEnteredBy" which are admin-edges; show them in a separate group)
+  const outEdges = S.edges.filter(e => e.from === uid);
+  const outGroups = {};
+  for (const e of outEdges) {
+    (outGroups[e.kind] = outGroups[e.kind] || []).push(e.to);
+  }
+  const adminKinds = new Set(['wasResultOf','metadataEnteredBy']);
+  const semOut = Object.keys(outGroups).filter(k => !adminKinds.has(k)).sort();
+  const admOut = Object.keys(outGroups).filter(k =>  adminKinds.has(k)).sort();
+
+  if (semOut.length) {
+    body += '<div class="dsec"><div class="dsec-h">Outgoing (' + outEdges.filter(e => !adminKinds.has(e.kind)).length + ')</div>';
+    for (const kind of semOut) {
+      const targets = outGroups[kind];
+      body += `<div class="dedge"><div class="dedge-k">${esc(kind)}</div><div class="dedge-t">`;
+      body += targets.map(t => {
+        const tn = nodesById[t];
+        const lbl = tn ? esc(tn.label || t) : esc(t);
+        return `<a href="#" data-mbo="${esc(t)}" title="${esc(t)}">${lbl}</a>`;
+      }).join('<br>');
+      body += '</div></div>';
+    }
+    body += '</div>';
+  }
+
+  // Incoming edges (reverse-index)
+  const inbound = REV_INDEX[uid] || [];
+  if (inbound.length) {
+    const inGroups = {};
+    for (const e of inbound) {
+      (inGroups[e.kind] = inGroups[e.kind] || []).push(e.from);
+    }
+    const semIn = Object.keys(inGroups).filter(k => !adminKinds.has(k)).sort();
+    if (semIn.length) {
+      body += '<div class="dsec"><div class="dsec-h">Incoming (' + inbound.filter(e => !adminKinds.has(e.kind)).length + ')</div>';
+      for (const kind of semIn) {
+        const sources = inGroups[kind];
+        body += `<div class="dedge"><div class="dedge-k">${esc(kind)} ←</div><div class="dedge-t">`;
+        body += sources.map(s => {
+          const sn = nodesById[s];
+          const lbl = sn ? esc(sn.label || s) : esc(s);
+          return `<a href="#" data-mbo="${esc(s)}" title="${esc(s)}">${lbl}</a>`;
+        }).join('<br>');
+        body += '</div></div>';
+      }
+      body += '</div>';
+    }
+  }
+
+  // Provenance (admin edges) — folded, less prominent
+  if (admOut.length || (REV_INDEX[uid]||[]).some(e => adminKinds.has(e.kind))) {
+    body += '<div class="dsec"><div class="dsec-h">Provenance</div>';
+    for (const kind of admOut) {
+      const targets = outGroups[kind];
+      body += `<div class="dedge"><div class="dedge-k">${esc(kind)}</div><div class="dedge-t">`;
+      body += targets.map(t => {
+        const tn = nodesById[t];
+        const lbl = tn ? esc(tn.label || t) : esc(t);
+        return `<a href="#" data-mbo="${esc(t)}" title="${esc(t)}">${lbl}</a>`;
+      }).join('<br>');
+      body += '</div></div>';
+    }
+    body += '</div>';
+  }
+
+  qs('#detail-body').innerHTML = body;
+  qs('#detail').classList.remove('hide');
+
+  // Wire internal mbo: links — clicking re-opens the panel on the target.
+  qs('#detail-body').querySelectorAll('a[data-mbo]').forEach(a => {
+    a.addEventListener('click', ev => {
+      ev.preventDefault();
+      openDetail(a.dataset.mbo);
+      // also focus the camera on it if it's currently in the graph
+      if (S.graph && S.graph.hasNode(a.dataset.mbo) && S.renderer) {
+        const pos = S.renderer.getNodeDisplayData(a.dataset.mbo);
+        if (pos) S.renderer.getCamera().animate(pos, {duration: 400});
+      }
+    });
+  });
+}
+
+function closeDetail(){
+  qs('#detail').classList.add('hide');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  FILE INGESTION
+// ═══════════════════════════════════════════════════════════════════════════
+function addRow(name, n, e, ok, errMsg){
   const el = document.createElement('div');
   el.className = 'fi';
   el.innerHTML = `<span class="${ok?'ok':'er'}">${ok?'✓':'✗'}</span>`
     + `<span class="nm" title="${esc(name)}">${esc(name)}</span>`
-    + `<span class="schema-tag ${schvCls}">${schema}</span>`
-    + `<span class="mt">${ok?ds+'d '+p+'p':'ERR'}</span>`;
+    + `<span class="mt">${ok ? n+'n '+e+'e' : 'ERR'}</span>`;
   qs('#flist').appendChild(el);
-  if (!ok && errMsg) logError(name, errMsg);
+  if (!ok && errMsg) console.warn(name, errMsg);
 }
 
-function activate() {
+function activate(){
   qs('#splash').classList.add('gone');
-  ['pstats','pview','pact','pleg'].forEach(id => qs('#'+id).classList.remove('hide'));
+  ['pstats','phm','pfilter','pview','pact','pleg'].forEach(id => qs('#'+id).classList.remove('hide'));
   qs('#hdot').classList.add('live');
-  const n = S.files.length;
-  qs('#hbadge').textContent = n+' FILE'+(n>1?'S':'');
+  const f = S.bundles.length;
+  qs('#hbadge').textContent = f + ' BUNDLE' + (f!==1?'S':'');
   qs('#hbadge').className = 'hbadge ok';
-  const schemas = [...new Set(S.files.map(f=>f.schema))].join(', ');
-  qs('#hsub').textContent = `${n} files · schemas: ${schemas}`;
+  qs('#hsub').textContent = `${S.nodes.length} nodes · ${S.edges.length} edges · drop more JSON to overlay`;
   render();
 }
 
-// ═══════════════════════════════════════════════════════
+function handleFiles(files){
+  const arr = [...files].filter(f => f.name.endsWith('.json'));
+  if (!arr.length) return;
+  let done = 0;
+  arr.forEach(file => {
+    const rd = new FileReader();
+    rd.onload = ev => {
+      try {
+        const j = JSON.parse(ev.target.result);
+        ingest(j, file.name);
+        addRow(file.name, j.nodes?.length || 0, j.edges?.length || 0, true);
+      } catch (ex) {
+        addRow(file.name, 0, 0, false, ex.message);
+      }
+      if (++done === arr.length) activate();
+    };
+    rd.readAsText(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  GEXF EXPORT
-// ═══════════════════════════════════════════════════════
-function exportGEXF() {
+// ═══════════════════════════════════════════════════════════════════════════
+function exportGEXF(){
   if (!S.graph) return;
-  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<gexf xmlns="http://www.gexf.net/1.3">\n  <graph defaultedgetype="undirected">\n    <nodes>\n`;
-  S.graph.forEachNode((n,a)=>{
-    xml += `      <node id="${esc(n)}" label="${esc(a.label||'')}" x="${(a.x||0).toFixed(2)}" y="${(a.y||0).toFixed(2)}" size="${(a.size||6).toFixed(1)}" color="${a.color||''}"/>\n`;
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<gexf xmlns="http://www.gexf.net/1.3">\n  <graph defaultedgetype="directed">\n    <nodes>\n`;
+  S.graph.forEachNode((n, a) => {
+    xml += `      <node id="${esc(n)}" label="${esc(a.label||'')}" />\n`;
   });
-  xml += `    </nodes>\n    <edges>\n`;
-  let ei=0;
-  S.graph.forEachEdge((e,a,src,tgt)=>{
-    xml += `      <edge id="e${ei++}" source="${esc(src)}" target="${esc(tgt)}" weight="${a.weight||1}"/>\n`;
+  xml += '    </nodes>\n    <edges>\n';
+  let i = 0;
+  S.graph.forEachEdge((e, a, s, t) => {
+    xml += `      <edge id="e${i++}" source="${esc(s)}" target="${esc(t)}" label="${esc(a.label||'')}"/>\n`;
   });
-  xml += `    </edges>\n  </graph>\n</gexf>`;
-  const url = URL.createObjectURL(new Blob([xml],{type:'text/xml'}));
-  Object.assign(document.createElement('a'),{href:url,download:'kg_export.gexf'}).click();
-  URL.revokeObjectURL(url);
+  xml += '    </edges>\n  </graph>\n</gexf>';
+  const u = URL.createObjectURL(new Blob([xml], {type:'text/xml'}));
+  Object.assign(document.createElement('a'), {href:u, download:'mbo-catalog.gexf'}).click();
+  URL.revokeObjectURL(u);
 }
 
-// ═══════════════════════════════════════════════════════
-//  UTILITIES
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
 const qs = s => document.querySelector(s);
-const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-function lerp(a, b, t) {
-  const h = s => [parseInt(s.slice(1,3),16),parseInt(s.slice(3,5),16),parseInt(s.slice(5,7),16)];
-  const [ar,ag,ab_]=h(a),[br,bg_,bb]=h(b);
-  return '#'+[ar+(br-ar)*t,ag+(bg_-ag)*t,ab_+(bb-ab_)*t].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
-}
-function setSt(cls,txt){const el=qs('#lst');el.className=cls;el.textContent=txt;}
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                          .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function setSt(c, t){ const e = qs('#lst'); e.className = c; e.textContent = t; }
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 //  EVENT WIRING
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 ['dragenter','dragover'].forEach(ev => document.body.addEventListener(ev, e => {
   e.preventDefault();
-  qs('#sdrop').classList.add('dza'); qs('#scard').classList.add('dza');
+  qs('#sdrop').classList.add('dza');
+  qs('#scard')?.classList.add('dza');
 }));
-['dragleave','drop'].forEach(() => {});
 document.body.addEventListener('dragleave', () => {
-  qs('#sdrop').classList.remove('dza'); qs('#scard').classList.remove('dza');
+  qs('#sdrop').classList.remove('dza');
+  qs('#scard')?.classList.remove('dza');
 });
 document.body.addEventListener('drop', e => {
   e.preventDefault();
-  qs('#sdrop').classList.remove('dza'); qs('#scard').classList.remove('dza');
+  qs('#sdrop').classList.remove('dza');
+  qs('#scard')?.classList.remove('dza');
   handleFiles(e.dataTransfer.files);
 });
-
 qs('#sdrop').addEventListener('click', () => qs('#fpick').click());
-qs('#fpick').addEventListener('change', e => { handleFiles(e.target.files); e.target.value=''; });
+qs('#fpick').addEventListener('change', e => handleFiles(e.target.files));
 
-qs('#vtog').addEventListener('click', e => {
-  const btn = e.target.closest('[data-v]'); if (!btn) return;
-  qs('#vtog').querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on'); S.view=btn.dataset.v; if (S.files.length) render();
+qs('#wptog').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  qs('#wptog .on')?.classList.remove('on');
+  b.classList.add('on');
+  S.wpFilter = b.dataset.wp;
+  render();
 });
 qs('#ctog').addEventListener('click', e => {
-  const btn = e.target.closest('[data-c]'); if (!btn) return;
-  qs('#ctog').querySelectorAll('.tb').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on'); S.color=btn.dataset.c;
-  if (S.graph) { applyColors(S.graph); S.renderer&&S.renderer.refresh(); }
+  const b = e.target.closest('button'); if (!b) return;
+  qs('#ctog .on')?.classList.remove('on');
+  b.classList.add('on');
+  S.colorMode = b.dataset.c;
+  render();
 });
 qs('#cklabels').addEventListener('change', e => {
-  S.labels=e.target.checked;
-  if (S.graph) { S.graph.forEachNode((n,a)=>S.graph.setNodeAttribute(n,'label',S.labels?(a.label||''):'')); S.renderer&&S.renderer.refresh(); }
+  S.labels = e.target.checked;
+  if (S.renderer) S.renderer.refresh();
 });
-qs('#ckorgs').addEventListener('change', e => { S.orgs=e.target.checked; if (S.files.length) render(); });
-qs('#sshared').addEventListener('input', e => {
-  S.minShared=+e.target.value; qs('#sval').textContent='≥ '+S.minShared;
-  if (S.files.length && S.view!=='bipartite') render();
-});
-qs('#brelayout').addEventListener('click', ()=>{ if (S.files.length) render(); });
-qs('#bclearerr').addEventListener('click', ()=>{ const l=qs('#errlog'); l.querySelector('.errlog-body').innerHTML=''; l.classList.add('hide'); });
-qs('#breset').addEventListener('click', ()=>{ S.renderer&&S.renderer.getCamera().animatedReset(); });
+qs('#ckpeople').addEventListener('change', e => { S.showPeople = e.target.checked; render(); });
+qs('#ckhowto').addEventListener('change',  e => { S.showHowto  = e.target.checked; render(); });
+qs('#ckaux').addEventListener('change',    e => { S.showAux    = e.target.checked; render(); });
+qs('#qsearch').addEventListener('input', () => render());
+qs('#brelayout').addEventListener('click', render);
+qs('#breset').addEventListener('click', () => S.renderer?.getCamera().animatedReset());
 qs('#bexport').addEventListener('click', exportGEXF);
-qs('#bbundle').addEventListener('click', exportBundle);
+
+// Detail panel close handlers
+qs('#detail-close').addEventListener('click', closeDetail);
 document.addEventListener('keydown', e => {
-  if (e.target.tagName==='INPUT') return;
-  if (e.key==='l'||e.key==='L') { if (S.files.length) render(); }
-  if (e.key==='r'||e.key==='R') { S.renderer&&S.renderer.getCamera().animatedReset(); }
+  if (e.key === 'Escape') closeDetail();
 });
 
-
-// ═══════════════════════════════════════════════════════
-//  AUTO-LOAD from data.json (GitHub Pages hosting)
-// ═══════════════════════════════════════════════════════
-async function autoLoad() {
-  const msgEl = qs('#splash-msg');
+// ═══════════════════════════════════════════════════════════════════════════
+//  AUTO-LOAD data.json
+// ═══════════════════════════════════════════════════════════════════════════
+(async () => {
+  const msg = qs('#splash-msg');
   try {
     const resp = await fetch('./data.json');
     if (!resp.ok) {
-      // No data.json — pure drag-drop mode
-      if (msgEl) msgEl.textContent = 'Drop JSON files to begin, or add a data.json bundle.';
+      msg.textContent = 'No data.json — drop a JSON bundle to begin.';
       return;
     }
-    const bundle = await resp.json();
-    const files  = bundle.files || [];
-
-    if (msgEl) msgEl.textContent = `Loading ${files.length} shared records...`;
-
-    let loaded = 0;
-    for (const item of files) {
-      try {
-        const parsed = parseFile(item.data, item.filename || item.name || 'record');
-        S.files.push({ name: item.filename || item.name, _rawData: item.data, ...parsed, autoLoaded: true });
-        loaded++;
-      } catch(e) {
-        console.warn('Auto-load parse error:', item.filename, e);
-      }
-    }
-
-    if (loaded > 0) {
-      // Update file list to show auto-loaded badge
-      const flist = qs('#flist');
-      const summary = document.createElement('div');
-      summary.className = 'fi';
-      summary.style.cssText = 'background:rgba(56,189,248,.08);border:1px solid var(--border2)';
-      const ppl  = allPeople().length;
-      const ds   = allDatasets().length;
-      summary.innerHTML = `<span class="ok">●</span>`
-        + `<span class="nm">Auto-loaded: ${loaded} files</span>`
-        + `<span class="mt">${ds}ds ${ppl}p</span>`;
-      flist.appendChild(summary);
-
-      qs('#ff').textContent  = loaded;
-      qs('#hbadge').textContent = loaded + ' FILE' + (loaded>1?'S':'');
-      qs('#hbadge').className   = 'hbadge ok';
-      const schemas = [...new Set(S.files.map(f=>f.schema))].join(', ');
-      qs('#hsub').textContent   = `${loaded} shared files · schemas: ${schemas} · drop files to add private data`;
-
-      if (bundle.anonymized) {
-        qs('#hsub').textContent += ' · ANONYMIZED';
-      }
-
-      activate();
-    } else {
-      if (msgEl) msgEl.textContent = 'Drop JSON files to begin.';
-    }
-
-  } catch(e) {
-    console.log('No data.json found — running in drag-drop only mode');
-    if (msgEl) msgEl.textContent = 'Drop JSON files to begin.';
+    const raw = await resp.json();
+    ingest(raw, 'data.json');
+    addRow('data.json', raw.nodes?.length || 0, raw.edges?.length || 0, true);
+    activate();
+  } catch (e) {
+    msg.textContent = 'Failed to load data.json — drop a JSON bundle to begin.';
+    console.warn(e);
   }
-}
-
-window.addEventListener('load', () => {
-  autoLoad();
-  const missing=[];
-  if (typeof graphology==='undefined') missing.push('graphology');
-  if (typeof Sigma==='undefined') missing.push('Sigma');
-  if (typeof d3==='undefined') missing.push('d3');
-  if (missing.length) {
-    qs('#hbadge').textContent='CDN FAIL: '+missing.join(', ');
-    qs('#hbadge').className='hbadge warn';
-    qs('#hsub').textContent='Check internet connection — libraries failed to load';
-  }
-});
-
-// ═══════════════════════════════════════════════════════
-//  SAFE COMMENT STRIPPER (respects string literals)
-// ═══════════════════════════════════════════════════════
-function stripComments(str) {
-  let out = '', inStr = false, i = 0;
-  while (i < str.length) {
-    const c = str[i];
-    if (inStr) {
-      out += c;
-      if (c === '\\') { out += str[++i] || ''; }  // escaped char
-      else if (c === '"') inStr = false;
-    } else if (c === '"') {
-      inStr = true; out += c;
-    } else if (c === '/' && str[i+1] === '/') {
-      // Line comment — skip to end of line
-      while (i < str.length && str[i] !== '\n') i++;
-    } else if (c === '/' && str[i+1] === '*') {
-      // Block comment — skip to */
-      i += 2;
-      while (i < str.length && !(str[i] === '*' && str[i+1] === '/')) i++;
-      i++;
-    } else {
-      out += c;
-    }
-    i++;
-  }
-  return out;
-}
-
-
-// ═══════════════════════════════════════════════════════
-//  VISIBLE ERROR LOG
-// ═══════════════════════════════════════════════════════
-function logError(filename, msg) {
-  const log = qs('#errlog');
-  if (log.classList.contains('hide')) log.classList.remove('hide');
-  const el = document.createElement('div');
-  el.style.cssText = 'padding:4px 0;border-bottom:1px solid var(--border);font-size:10px;';
-  el.innerHTML = '<span style="color:var(--red);font-family:var(--mono)">'
-    + esc(filename.slice(0,30)) + '</span><br>'
-    + '<span style="color:var(--dim)">' + esc(msg.slice(0,120)) + '</span>';
-  log.querySelector('.errlog-body').appendChild(el);
-}
-
-
-// ═══════════════════════════════════════════════════════
-//  EXPORT data.json BUNDLE (for GitHub Pages hosting)
-// ═══════════════════════════════════════════════════════
-function exportBundle() {
-  if (!S.files.length) { alert('No files loaded — drag in your approved JSON files first.'); return; }
-
-  const ppl = allPeople(), ds = allDatasets();
-  const bundle = {
-    version: '1.0',
-    built: new Date().toISOString(),
-    anonymized: false,
-    file_count: S.files.length,
-    people_count: ppl.length,
-    dataset_count: ds.length,
-    files: S.files.map(f => ({
-      filename: f.name,
-      people_count: f.people.length,
-      dataset_count: f.datasets.length,
-      data: f._rawData || null,
-    })),
-  };
-
-  const missing = bundle.files.filter(f => !f.data).length;
-  if (missing > 0) {
-    // Warn but still export what we have
-    console.warn(missing + ' files missing raw data — they will be excluded from bundle');
-    bundle.files = bundle.files.filter(f => f.data);
-  }
-
-  const json = JSON.stringify(bundle, null, 2);
-  const url  = URL.createObjectURL(new Blob([json], {type:'application/json'}));
-  Object.assign(document.createElement('a'), {href:url, download:'data.json'}).click();
-  URL.revokeObjectURL(url);
-
-  // Show confirmation
-  const btn = qs('#bbundle');
-  const orig = btn.textContent;
-  btn.textContent = '✓ data.json downloaded!';
-  btn.style.color = 'var(--green)';
-  btn.style.borderColor = 'var(--green)';
-  setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 3000);
-}
-
-
-function updatePrivateBadge() {
-  const hasPrivate = S.files.some(f => !f.autoLoaded);
-  const badge = qs('#hprivate');
-  if (badge) badge.style.display = hasPrivate ? '' : 'none';
-}
-
+})();
 </script>
 </body>
 </html>

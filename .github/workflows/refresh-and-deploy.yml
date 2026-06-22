@@ -1,0 +1,79 @@
+name: Refresh KG and deploy
+
+# Rebuilds data.json from the upstream marco-bolo/csv-to-json-ld JSON-LD output
+# and republishes the explorer to GitHub Pages. Triggers:
+#   - on push to main (so manual edits to index.html or build_data.py rebuild)
+#   - every 6 hours (catches upstream pipeline updates)
+#   - on demand via the Actions tab
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch upstream JSON-LD
+        run: |
+          mkdir -p schema-jsonld
+          # Shallow-clone the upstream csv-to-json-ld repo and copy out the
+          # per-entity JSON-LD directory. Sparse-checkout keeps this fast.
+          git clone --depth 1 --filter=blob:none --sparse \
+            https://github.com/marco-bolo/csv-to-json-ld.git /tmp/c2j
+          cd /tmp/c2j && git sparse-checkout set remote/models/schema-jsonld
+          cp -r /tmp/c2j/remote/models/schema-jsonld/* "$GITHUB_WORKSPACE/schema-jsonld/"
+          cd "$GITHUB_WORKSPACE"
+          echo "entity files: $(ls schema-jsonld/ | grep -v input-metadata | wc -l)"
+          echo "sidecars:     $(ls schema-jsonld/ | grep input-metadata | wc -l)"
+
+      - name: Build data.json
+        run: python build_data.py --src schema-jsonld --out data.json
+
+      - name: Commit refreshed data.json
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet data.json; then
+            echo "data.json unchanged"
+          else
+            git add data.json
+            git commit -m "chore(data): refresh KG $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
+
+      - name: Drop schema-jsonld/ before publish (it's huge, not needed at runtime)
+        run: rm -rf schema-jsonld
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
