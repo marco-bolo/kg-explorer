@@ -8,12 +8,32 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
+  /* dark theme (default) */
   --bg:#08101e;--bg2:#0d1929;--bg3:#152238;
   --border:#1e3050;--border2:#2a4570;
   --text:#f0f4fa;--dim:#a7bdd6;
   --cyan:#38bdf8;--amber:#f59e0b;--green:#34d399;--red:#f87171;--purple:#a78bfa;
+  --orange:#fb923c;
+  --text-on-bright:#08101e;   /* used for badge/heatmap text on saturated bg */
+  --cyan-hover:#7dd3fc;
+  --amber-hover:#fbbf24;
+  --shadow-strong:rgba(0,0,0,.3);
+  --row-sep:rgba(30,48,80,.4);
+
   --mono:'Space Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
   --panel:268px;
+}
+:root[data-theme="light"]{
+  --bg:#fafbfc;--bg2:#f1f5f9;--bg3:#e2e8f0;
+  --border:#cbd5e1;--border2:#94a3b8;
+  --text:#0f172a;--dim:#475569;
+  --cyan:#0284c7;--amber:#b45309;--green:#047857;--red:#dc2626;--purple:#6d28d9;
+  --orange:#c2410c;
+  --text-on-bright:#fafbfc;   /* light text on saturated bg in light mode */
+  --cyan-hover:#0369a1;
+  --amber-hover:#92400e;
+  --shadow-strong:rgba(15,23,42,.10);
+  --row-sep:rgba(148,163,184,.5);
 }
 body{
   background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;
@@ -64,7 +84,7 @@ input[type=range]{width:100%;accent-color:var(--cyan)}
 .btn{display:block;width:100%;padding:7px 10px;background:transparent;border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .15s;text-align:center;margin-top:5px}
 .btn:hover{border-color:var(--cyan);color:var(--cyan)}.btn.primary{background:var(--cyan);color:var(--bg);border-color:var(--cyan);font-weight:700}.btn.primary:hover{opacity:.88}
 .schema-tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:2px 5px;border-radius:2px;border:1px solid var(--border2);color:var(--dim);margin-left:4px}
-.schema-tag.v1{color:#fb923c;border-color:#fb923c}
+.schema-tag.v1{color:var(--orange);border-color:var(--orange)}
 .schema-tag.v2{color:var(--cyan);border-color:var(--cyan)}
 .schema-tag.v3{color:var(--purple);border-color:var(--purple)}
 .schema-tag.v4{color:var(--green);border-color:var(--green)}
@@ -95,7 +115,7 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
 .wphm{display:grid;grid-template-columns:auto repeat(7,1fr);gap:2px;font-family:var(--mono);font-size:9px;align-items:center}
 .wphm-h{color:var(--dim);text-align:center;letter-spacing:.05em}
 .wphm-l{color:var(--dim);padding-right:4px;text-align:right;letter-spacing:.05em}
-.wphm-c{height:18px;display:flex;align-items:center;justify-content:center;border-radius:2px;color:#08101e;font-weight:700;font-size:9px}
+.wphm-c{height:18px;display:flex;align-items:center;justify-content:center;border-radius:2px;color:var(--text-on-bright);font-weight:700;font-size:9px}
 
 /* Detail side panel — opens on node click, slides over the right edge of the canvas */
 #gwrap{position:relative}
@@ -103,7 +123,7 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
   position:absolute;top:0;right:0;bottom:0;width:380px;
   background:var(--bg2);border-left:1px solid var(--border);
   display:flex;flex-direction:column;z-index:10;
-  box-shadow:-4px 0 12px rgba(0,0,0,.3);
+  box-shadow:-4px 0 12px var(--shadow-strong);
   font-family:var(--sans);
 }
 #detail-head{
@@ -138,12 +158,12 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
 .dprop-k{color:var(--dim);font-size:10px;word-break:break-word}
 .dprop-v{color:var(--text);word-break:break-word;font-size:11px}
 .dprop-v a, .dlink{color:var(--cyan);text-decoration:none;border-bottom:1px dotted var(--cyan)}
-.dprop-v a:hover, .dlink:hover{color:#7dd3fc;border-bottom-style:solid}
+.dprop-v a:hover, .dlink:hover{color:var(--cyan-hover);border-bottom-style:solid}
 .dlink-int{color:var(--amber);border-bottom-color:var(--amber)}
-.dlink-int:hover{color:#fbbf24}
+.dlink-int:hover{color:var(--amber-hover)}
 .dedge{
   display:flex;justify-content:space-between;align-items:center;gap:8px;
-  padding:3px 0;border-bottom:1px solid rgba(30,48,80,.4);
+  padding:3px 0;border-bottom:1px solid var(--row-sep);
   font-size:10px;
 }
 .dedge:last-child{border-bottom:none}
@@ -153,16 +173,30 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
 }
 .dedge-t{flex:1;text-align:right;word-break:break-word}
 .dedge-t a{color:var(--cyan);text-decoration:none;border-bottom:1px dotted var(--cyan)}
-.dedge-t a:hover{color:#7dd3fc;border-bottom-style:solid}
+.dedge-t a:hover{color:var(--cyan-hover);border-bottom-style:solid}
 .dkindbadge{
   display:inline-block;padding:1px 5px;border-radius:2px;font-size:8px;
-  letter-spacing:.06em;text-transform:uppercase;color:#08101e;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--text-on-bright);font-weight:700;
   margin-right:6px;vertical-align:1px;
 }
 .dlist-toggle{
   font-size:9px;color:var(--dim);cursor:pointer;margin-left:6px;
 }
 .dlist-toggle:hover{color:var(--cyan)}
+
+/* Theme toggle button in the header */
+#themetog{
+  background:transparent;border:1px solid var(--border2);
+  color:var(--dim);font-size:13px;line-height:1;
+  width:26px;height:26px;border-radius:3px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;flex-shrink:0;
+}
+#themetog:hover{color:var(--cyan);border-color:var(--cyan)}
+#themetog .ti-light{display:none}
+:root[data-theme="light"] #themetog .ti-dark{display:none}
+:root[data-theme="light"] #themetog .ti-light{display:inline}
+
 </style>
 <body>
 <header>
@@ -170,6 +204,9 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
   <h1>MARCO-BOLO KG Explorer</h1>
   <div class="hsep"></div>
   <div class="hsub" id="hsub">Loading catalog graph…</div>
+  <button id="themetog" title="Toggle light / dark mode" aria-label="Toggle theme">
+    <span class="ti-dark">☾</span><span class="ti-light">☀</span>
+  </button>
   <div class="hbadge" id="hbadge">…</div>
 </header>
 <aside>
@@ -239,14 +276,7 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
   </div>
   <div class="pnl hide" id="pleg">
     <div class="plbl">Legend</div>
-    <div class="litem"><div class="ldot" style="background:#f59e0b"></div><span>Task</span></div>
-    <div class="litem"><div class="ldot" style="background:#a78bfa"></div><span>Deliverable</span></div>
-    <div class="litem"><div class="ldot" style="background:#38bdf8"></div><span>Dataset</span></div>
-    <div class="litem"><div class="ldot" style="background:#34d399"></div><span>Document</span></div>
-    <div class="litem"><div class="ldot" style="background:#f472b6"></div><span>HowTo / Step</span></div>
-    <div class="litem"><div class="ldot" style="background:#7dd3fc"></div><span>Instrument</span></div>
-    <div class="litem"><div class="ldot" style="background:#fbbf24"></div><span>Platform</span></div>
-    <div class="litem"><div class="ldot" style="background:#94a3b8"></div><span>Person / Org</span></div>
+    <div id="leghost"></div>
   </div>
 </aside>
 <div id="gwrap">
@@ -283,26 +313,92 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
 // ═══════════════════════════════════════════════════════════════════════════
 //  PALETTE — colours by entity kind. Chosen to match Steve's sdiggs/kg-explorer
 //  amber/cyan/amber scheme while extending for MBO's richer @type vocabulary.
+//
+//  Both themes ship a parallel palette. The light palette uses darker
+//  variants of each category color so contrast on a white background is
+//  legible. T() returns whichever palette matches the currently-active theme.
 // ═══════════════════════════════════════════════════════════════════════════
-const COL_KIND = {
-  task: '#f59e0b', deliverable: '#a78bfa', action: '#fb923c',
-  dataset: '#38bdf8', datadownload: '#22d3ee',
-  document: '#34d399',
-  howto: '#f472b6',
-  instrument: '#7dd3fc', platform: '#fbbf24',
-  person: '#94a3b8', org: '#cbd5e1',
-  place: '#86efac', property: '#475569',
-  software: '#c084fc', service: '#e879f9',
-  contact: '#64748b', term: '#475569',
-  embargo: '#fb7185', grant: '#fde047', taxon: '#a3e635',
-  audience: '#475569', comment: '#475569', license: '#475569',
-  other: '#475569',
+const THEMES = {
+  dark: {
+    kind: {
+      task: '#f59e0b', deliverable: '#a78bfa', action: '#fb923c',
+      dataset: '#38bdf8', datadownload: '#22d3ee',
+      document: '#34d399',
+      howto: '#f472b6',
+      instrument: '#7dd3fc', platform: '#fbbf24',
+      person: '#94a3b8', org: '#cbd5e1',
+      place: '#86efac', property: '#475569',
+      software: '#c084fc', service: '#e879f9',
+      contact: '#64748b', term: '#475569',
+      embargo: '#fb7185', grant: '#fde047', taxon: '#a3e635',
+      audience: '#475569', comment: '#475569', license: '#475569',
+      other: '#475569',
+    },
+    wp: {
+      WP1:'#38bdf8', WP2:'#34d399', WP3:'#fbbf24', WP4:'#f472b6',
+      WP5:'#a78bfa', WP6:'#fb7185', WP7:'#f59e0b', null:'#475569',
+    },
+    edgeBase: 'rgba(74,101,128,.5)',
+    label: '#b8cce4',
+    // colorFor() return values for non-kind modes
+    orphan: '#fb7185',     // red — hub with no products
+    hub: '#34d399',        // green — hub with products
+    nonHub: '#475569',     // dim — not a hub
+    hierDim: '#1e3050',    // very dim node in hierarchy mode (other nodes fade out)
+    // edge colors in buildGraph()
+    hierEdgeBright: '#fbbf24',          // hierarchy edge in hierarchy mode
+    hierEdgeDim: 'rgba(74,101,128,.15)',// non-hierarchy edge in hierarchy mode
+    hierEdgeMuted: '#7d6a3a',           // hierarchy edge in other modes
+    prodEdge: '#3d5a80',                // production edge in other modes
+    // heatmap
+    heatmapZero: '#0a1f30',
+    heatmapBg: r => `rgb(${Math.round(20+75*r)},${Math.round(80+118*r)},${Math.round(110+122*r)})`,
+    heatmapFg: r => r > 0.4 ? '#08101e' : '#b8cce4',
+  },
+  light: {
+    kind: {
+      task: '#b45309', deliverable: '#6d28d9', action: '#c2410c',
+      dataset: '#0369a1', datadownload: '#0e7490',
+      document: '#047857',
+      howto: '#be185d',
+      instrument: '#0c4a6e', platform: '#a16207',
+      person: '#475569', org: '#64748b',
+      place: '#15803d', property: '#1e293b',
+      software: '#7e22ce', service: '#a21caf',
+      contact: '#334155', term: '#1e293b',
+      embargo: '#be123c', grant: '#a16207', taxon: '#4d7c0f',
+      audience: '#1e293b', comment: '#1e293b', license: '#1e293b',
+      other: '#1e293b',
+    },
+    wp: {
+      WP1:'#0369a1', WP2:'#047857', WP3:'#a16207', WP4:'#be185d',
+      WP5:'#6d28d9', WP6:'#be123c', WP7:'#b45309', null:'#1e293b',
+    },
+    edgeBase: 'rgba(100,116,139,.5)',
+    label: '#1e293b',
+    orphan: '#dc2626',
+    hub: '#047857',
+    nonHub: '#94a3b8',
+    hierDim: '#e2e8f0',
+    hierEdgeBright: '#b45309',
+    hierEdgeDim: 'rgba(148,163,184,.25)',
+    hierEdgeMuted: '#854d0e',
+    prodEdge: '#94a3b8',
+    heatmapZero: '#f1f5f9',
+    // light: low values are very light, high values dark sky-blue
+    heatmapBg: r => `rgb(${Math.round(224-217*r)},${Math.round(242-153*r)},${Math.round(254-121*r)})`,
+    heatmapFg: r => r > 0.55 ? '#f8fafc' : '#0f172a',
+  },
 };
-const COL_WP = {
-  WP1:'#38bdf8', WP2:'#34d399', WP3:'#fbbf24', WP4:'#f472b6',
-  WP5:'#a78bfa', WP6:'#fb7185', WP7:'#f59e0b', null:'#475569',
-};
-const COL_EDGE = 'rgba(74,101,128,.5)';
+let currentTheme = 'dark';
+const T = () => THEMES[currentTheme];
+
+// Friendly labels for the kinds shown in the legend
+const LEGEND_KINDS = [
+  ['task','Task'], ['deliverable','Deliverable'], ['dataset','Dataset'],
+  ['document','Document'], ['howto','HowTo / Step'], ['instrument','Instrument'],
+  ['platform','Platform'], ['person','Person / Org'],
+];
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  STATE
@@ -354,7 +450,12 @@ function ingest(bundle, name){
 // ═══════════════════════════════════════════════════════════════════════════
 //  HEATMAP — WP × kind grid in the side panel
 // ═══════════════════════════════════════════════════════════════════════════
+// Cache of the most recent heatmap stats, so we can re-render with new
+// colors when the theme toggle flips.
+let lastHeatmapStats = null;
 function renderHeatmap(stats){
+  lastHeatmapStats = stats;
+  const t = T();
   const wps = ['WP1','WP2','WP3','WP4','WP5','WP6','WP7'];
   const rows = [
     ['Tasks',       ['task']],
@@ -375,9 +476,8 @@ function renderHeatmap(stats){
     for (const w of wps) {
       const v = sumK(stats[w], keys);
       const r = v / rowMax[ri];
-      const bg = v === 0 ? '#0a1f30'
-                          : `rgb(${Math.round(20+75*r)},${Math.round(80+118*r)},${Math.round(110+122*r)})`;
-      const fg = r > 0.4 ? '#08101e' : '#b8cce4';
+      const bg = v === 0 ? t.heatmapZero : t.heatmapBg(r);
+      const fg = t.heatmapFg(r);
       h += `<div class="wphm-c" style="background:${bg};color:${fg}">${v}</div>`;
     }
   });
@@ -413,20 +513,21 @@ function nodeVisible(n){
 }
 
 function colorFor(n, inHierarchy){
-  if (S.colorMode === 'wp') return COL_WP[n.wp] || COL_WP[null];
+  const t = T();
+  if (S.colorMode === 'wp') return t.wp[n.wp] || t.wp[null];
   if (S.colorMode === 'orphan') {
     const isHub = n.kind === 'task' || n.kind === 'deliverable';
-    if (isHub && !S.outProduction[n.id]) return '#fb7185';   // red: orphan
-    if (isHub) return '#34d399';                              // green: has products
-    return '#475569';                                          // dim: not a hub
+    if (isHub && !S.outProduction[n.id]) return t.orphan;   // red: orphan
+    if (isHub) return t.hub;                                // green: has products
+    return t.nonHub;                                        // dim: not a hub
   }
   if (S.colorMode === 'hierarchy') {
     // Members of the action hierarchy get their normal kind color; everyone
     // else fades into the background so the tree pops.
-    if (inHierarchy) return COL_KIND[n.kind] || COL_KIND.other;
-    return '#1e3050';   // very dim — barely above the background
+    if (inHierarchy) return t.kind[n.kind] || t.kind.other;
+    return t.hierDim;   // very dim — barely above the background
   }
-  return COL_KIND[n.kind] || COL_KIND.other;
+  return t.kind[n.kind] || t.kind.other;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -522,13 +623,14 @@ function buildGraph(){
     else if (prodEdge) weight = 3;   // production edges (result→dataset, etc.)
 
     // color depends on the mode
-    let color = COL_EDGE;
+    const t = T();
+    let color = t.edgeBase;
     if (S.colorMode === 'hierarchy') {
-      color = hierEdge ? '#fbbf24' : 'rgba(74,101,128,.15)';   // bright amber for tree, very dim for rest
+      color = hierEdge ? t.hierEdgeBright : t.hierEdgeDim;   // bright tree, dim rest
     } else if (hierEdge) {
-      color = '#7d6a3a';     // muted gold so hierarchy is still visible everywhere
+      color = t.hierEdgeMuted;     // muted gold so hierarchy is still visible everywhere
     } else if (prodEdge) {
-      color = '#3d5a80';
+      color = t.prodEdge;
     }
 
     g.addEdge(e.from, e.to, {
@@ -573,10 +675,10 @@ function render(){
 
     const r = new Sigma(g, qs('#smount'), {
       renderEdgeLabels: false,
-      defaultEdgeColor: COL_EDGE,
+      defaultEdgeColor: T().edgeBase,
       labelFont: 'Space Mono,monospace',
       labelSize: 11,
-      labelColor: {color:'#b8cce4'},
+      labelColor: {color: T().label},
       minCameraRatio:.05, maxCameraRatio:15,
       nodeReducer:(n,d) => ({...d, label: S.labels ? (d.label||'') : ''}),
       edgeReducer:(e,d) => ({...d, size: Math.max(.4, Math.min(3.5, (d.weight||1)*.5))}),
@@ -616,16 +718,10 @@ function row(k, v){
 //  outgoing edges (grouped by predicate), and incoming edges (reverse-index).
 //  URLs in property values become external links; mbo_<uuid> references become
 //  internal links that re-open the panel on that target.
+//
+//  All entity colors are resolved through T() at render time, so the panel
+//  re-paints correctly when the theme toggle flips.
 // ═══════════════════════════════════════════════════════════════════════════
-const PROD_KIND_BG = {  // lifted from COL_KIND, used for the kind badge
-  task: '#f59e0b', deliverable: '#a78bfa', action: '#fb923c',
-  dataset: '#38bdf8', datadownload: '#22d3ee', document: '#34d399',
-  howto: '#f472b6', instrument: '#7dd3fc', platform: '#fbbf24',
-  person: '#94a3b8', org: '#cbd5e1', place: '#86efac',
-  property: '#475569', software: '#c084fc', service: '#e879f9',
-  contact: '#64748b', term: '#475569', embargo: '#fb7185',
-  grant: '#fde047', taxon: '#a3e635', other: '#475569',
-};
 
 // Reverse-index: target_id -> [{from, kind}, ...]
 let REV_INDEX = null;
@@ -669,9 +765,10 @@ function openDetail(uid){
   if (!n) return;
   if (!REV_INDEX) rebuildReverseIndex();
   const nodesById = Object.fromEntries(S.nodes.map(x => [x.id, x]));
+  const t = T();
 
   // ── Header ────────────────────────────────────────────────────────
-  const badge = `<span class="dkindbadge" style="background:${PROD_KIND_BG[n.kind]||'#475569'}">${esc(n.kind)}</span>`;
+  const badge = `<span class="dkindbadge" style="background:${t.kind[n.kind]||t.kind.other}">${esc(n.kind)}</span>`;
   qs('#detail-title').innerHTML = badge + esc(n.label || uid);
 
   // ── Body sections ─────────────────────────────────────────────────
@@ -690,12 +787,12 @@ function openDetail(uid){
   if (wps.length === 0) {
     wpDisplay = '<span style="color:var(--dim)">(none)</span>';
   } else if (wps.length === 1) {
-    wpDisplay = `<span style="color:${COL_WP[wps[0]]||'#94a3b8'}">${esc(wps[0])}</span>`;
+    wpDisplay = `<span style="color:${t.wp[wps[0]]||t.wp[null]}">${esc(wps[0])}</span>`;
   } else {
-    wpDisplay = `<span style="color:${COL_WP[wps[0]]||'#94a3b8'}">${esc(wps[0])}</span>` +
+    wpDisplay = `<span style="color:${t.wp[wps[0]]||t.wp[null]}">${esc(wps[0])}</span>` +
       ` <span style="color:var(--dim);font-size:9px">primary</span>` +
       ` <span style="color:var(--dim);margin-left:6px">· also: ${wps.slice(1).map(w =>
-          `<span style="color:${COL_WP[w]||'#94a3b8'}">${esc(w)}</span>`).join(', ')}</span>`;
+          `<span style="color:${t.wp[w]||t.wp[null]}">${esc(w)}</span>`).join(', ')}</span>`;
   }
   body += `<div class="dprop"><div class="dprop-k">WP</div><div class="dprop-v">${wpDisplay}${n.wp_via?` <div style="color:var(--dim);font-size:9px;margin-top:2px">via ${esc(n.wp_via)}</div>`:''}</div></div>`;
   body += `<div class="dprop"><div class="dprop-k">JSON-LD</div><div class="dprop-v"><a href="${rorURL}" target="_blank" rel="noopener">view raw</a></div></div>`;
@@ -789,7 +886,9 @@ function openDetail(uid){
   }
 
   qs('#detail-body').innerHTML = body;
-  qs('#detail').classList.remove('hide');
+  const dp = qs('#detail');
+  dp.dataset.currentUid = uid;   // for theme-toggle re-render
+  dp.classList.remove('hide');
 
   // Wire internal mbo: links — clicking re-opens the panel on the target.
   qs('#detail-body').querySelectorAll('a[data-mbo]').forEach(a => {
@@ -806,7 +905,38 @@ function openDetail(uid){
 }
 
 function closeDetail(){
-  qs('#detail').classList.add('hide');
+  const dp = qs('#detail');
+  dp.classList.add('hide');
+  delete dp.dataset.currentUid;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LEGEND & THEME
+// ═══════════════════════════════════════════════════════════════════════════
+function renderLegend(){
+  const host = qs('#leghost');
+  if (!host) return;
+  const t = T();
+  host.innerHTML = LEGEND_KINDS.map(([k, lbl]) =>
+    `<div class="litem"><div class="ldot" style="background:${t.kind[k]||t.kind.other}"></div><span>${esc(lbl)}</span></div>`
+  ).join('');
+}
+
+// Flip themes. Re-paints every visual that's resolved through T():
+// graph nodes/edges, sigma's defaults, the heatmap, the legend, and any
+// open detail panel.
+function setTheme(theme){
+  currentTheme = theme === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = currentTheme;
+  try { localStorage.setItem('mbo-kg-theme', currentTheme); } catch {}
+  renderLegend();
+  if (lastHeatmapStats) renderHeatmap(lastHeatmapStats);
+  if (S.graph) render();    // re-build with new node/edge colors
+  // Re-render any open detail panel so badge + WP colors update
+  const dp = qs('#detail');
+  if (dp && !dp.classList.contains('hide') && dp.dataset.currentUid) {
+    openDetail(dp.dataset.currentUid);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -830,6 +960,7 @@ function activate(){
   qs('#hbadge').textContent = f + ' BUNDLE' + (f!==1?'S':'');
   qs('#hbadge').className = 'hbadge ok';
   qs('#hsub').textContent = `${S.nodes.length} nodes · ${S.edges.length} edges · drop more JSON to overlay`;
+  renderLegend();
   render();
 }
 
@@ -933,6 +1064,25 @@ qs('#detail-close').addEventListener('click', closeDetail);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeDetail();
 });
+
+// Theme toggle — flips dark/light and re-paints every visual through T().
+// Default is dark; the user's choice (once toggled) is remembered.
+qs('#themetog').addEventListener('click', () => {
+  setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
+// Read stored preference before the graph renders. We deliberately do NOT
+// honor prefers-color-scheme — dark is always the starting point unless the
+// user has explicitly toggled before.
+(function initTheme(){
+  let stored = null;
+  try { stored = localStorage.getItem('mbo-kg-theme'); } catch {}
+  if (stored === 'light' || stored === 'dark') {
+    currentTheme = stored;
+    document.documentElement.dataset.theme = stored;
+  } else {
+    document.documentElement.dataset.theme = 'dark';
+  }
+})();
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  AUTO-LOAD data.json
