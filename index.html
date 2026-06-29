@@ -1107,6 +1107,8 @@ function wrapLabel(ctx, text, maxWidth, maxLines){
 
 // Custom labelRenderer that wraps. Drops in as `labelRenderer` in the
 // Sigma settings; signature matches sigma 2.4's default.
+const LABEL_MAX_WIDTH = 180;
+
 function wrappedLabelRenderer(ctx, d, settings){
   if (!d.label) return;
   const {labelSize, labelFont, labelWeight, labelColor} = settings;
@@ -1116,16 +1118,15 @@ function wrappedLabelRenderer(ctx, d, settings){
   ctx.fillStyle = color;
   ctx.font = `${labelWeight} ${labelSize}px ${labelFont}`;
 
-  const lines = wrapLabel(ctx, d.label, LABEL_MAX_WIDTH, LABEL_MAX_LINES);
-  if (!lines.length) return;
-  const lineHeight = Math.round(labelSize * 1.2);
-  const x = d.x + d.size + 3;
-  // Vertical center: shift block up by half its extra height so single-line
-  // labels render at exactly the same baseline as before.
-  const baseY = d.y + labelSize / 3 - (lines.length - 1) * lineHeight / 2;
-  for (let k = 0; k < lines.length; k++){
-    ctx.fillText(lines[k], x, baseY + k * lineHeight);
+  // Truncate with ellipsis if needed — single fillText, no multi-line.
+  let txt = d.label;
+  if (ctx.measureText(txt).width > LABEL_MAX_WIDTH){
+    while (txt.length > 1 && ctx.measureText(txt + '…').width > LABEL_MAX_WIDTH){
+      txt = txt.slice(0, -1);
+    }
+    txt = txt.replace(/\s+\S*$/, '') + '…';
   }
+  ctx.fillText(txt, d.x + d.size + 3, d.y + labelSize / 3);
 }
 
 // Custom hoverRenderer that draws a pill sized to the wrapped block, then
@@ -1140,26 +1141,33 @@ function wrappedHoverRenderer(ctx, d, settings){
   ctx.shadowBlur = 8; ctx.shadowColor = '#000';
 
   if (typeof d.label === 'string' && d.label){
-    const lines = wrapLabel(ctx, d.label, LABEL_MAX_WIDTH, LABEL_MAX_LINES);
-    const lineHeight = Math.round(labelSize * 1.2);
-    const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
-    const padX = 5, padY = 3;
-    const left   = d.x + d.size + 1;
-    const right  = d.x + d.size + 3 + maxLineW + padX;
-    const totalH = lineHeight * lines.length + padY * 2;
-    const top    = d.y - totalH / 2;
-    const radius = Math.min(6, totalH / 2);
+    // Reuse the truncation so pill matches what gets drawn.
+    let txt = d.label;
+    if (ctx.measureText(txt).width > LABEL_MAX_WIDTH){
+      while (txt.length > 1 && ctx.measureText(txt + '…').width > LABEL_MAX_WIDTH){
+        txt = txt.slice(0, -1);
+      }
+      txt = txt.replace(/\s+\S*$/, '') + '…';
+    }
+    const w = Math.round(ctx.measureText(txt).width + 5);
+    const h = Math.round(labelSize + 4);
+    const c = Math.max(d.size, labelSize / 2) + 2;
+    const u = Math.asin(h / 2 / c);
+    const dx = Math.sqrt(Math.abs(c*c - (h/2)*(h/2)));
     ctx.beginPath();
-    ctx.roundRect(left, top, right - left, totalH, radius);
+    ctx.moveTo(d.x + dx, d.y + h/2);
+    ctx.lineTo(d.x + c + w, d.y + h/2);
+    ctx.lineTo(d.x + c + w, d.y - h/2);
+    ctx.lineTo(d.x + dx, d.y - h/2);
+    ctx.arc(d.x, d.y, c, u, -u);
+    ctx.closePath();
     ctx.fill();
   } else {
-    // No label — match default: circle behind the node.
     ctx.beginPath();
     ctx.arc(d.x, d.y, d.size + 2, 0, 2 * Math.PI);
     ctx.closePath();
     ctx.fill();
   }
-
   ctx.shadowBlur = 0;
   wrappedLabelRenderer(ctx, d, settings);
 }
