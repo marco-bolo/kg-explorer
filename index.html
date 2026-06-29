@@ -674,15 +674,18 @@ function render(){
     qs('#sa').textContent = ac;
 
     const r = new Sigma(g, qs('#smount'), {
-      renderEdgeLabels: false,
-      defaultEdgeColor: T().edgeBase,
-      labelFont: 'Space Mono,monospace',
-      labelSize: 11,
-      labelColor: {color: T().label},
-      minCameraRatio:.05, maxCameraRatio:15,
-      nodeReducer:(n,d) => ({...d, label: S.labels ? (d.label||'') : ''}),
-      edgeReducer:(e,d) => ({...d, size: Math.max(.6, Math.min(3.5, (d.weight||1)*.8))}),
-    });
+     renderEdgeLabels: false,
+     defaultEdgeColor: T().edgeBase,
+     labelFont: 'Space Mono,monospace',
+     labelSize: 11,
+     labelColor: {color: T().label},
+     labelRenderer: wrappedLabelRenderer,
+     hoverRenderer: wrappedHoverRenderer,
+     minCameraRatio:.05, maxCameraRatio:15,
+     nodeReducer:(n,d) => ({...d, label: S.labels ? (d.label||'') : ''}),
+     edgeReducer:(e,d) => ({...d, size: Math.max(.6, Math.min(5, (d.weight||1)*.8))}),
+   });
+
     r.on('enterNode', ({node}) => {
       const a = g.getNodeAttributes(node);
       const n = a._ref;
@@ -1018,6 +1021,11 @@ function exportPNG(width = EXPORT_W, height = EXPORT_H){
   // Filename suffixed with the active WP so seven exports don't clobber.
   const tag = S.wpFilter === 'all' ? 'all-wps' : S.wpFilter.toLowerCase();
   const fileName = `mbo-catalog-${tag}.png`;
+  // Label wrapping. 180px ~= 30 characters at 11px Space Mono — long enough
+  // for "MARCO-BOLO Deliverable D5.5" types of name but narrow enough that
+  // dense regions don't smear into each other. 3 lines max with ellipsis.
+  const LABEL_MAX_WIDTH = 180;
+  const LABEL_MAX_LINES = 3;
 
   // Hidden offscreen container at target dimensions.
   const off = document.createElement('div');
@@ -1063,6 +1071,97 @@ function exportPNG(width = EXPORT_W, height = EXPORT_H){
   // Trigger the render so afterRender fires (constructor already ran one
   // render, but we attach the listener after, so we force a second one).
   tmp.refresh();
+}
+
+// Word-wrap with ellipsis on overflow. Pure measure-and-split using the
+// canvas's own ctx.measureText, so the font set on `ctx` before calling
+// determines the breakpoints. Returns an array of lines.
+function wrapLabel(ctx, text, maxWidth, maxLines){
+  const words = String(text).split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const lines = [];
+  let cur = '';
+  let i = 0;
+  for (; i < words.length; i++){
+    const test = cur ? cur + ' ' + words[i] : words[i];
+    if (ctx.measureText(test).width > maxWidth && cur){
+      lines.push(cur);
+      cur = words[i];
+      if (lines.length >= maxLines - 1) { i++; break; }
+    } else {
+      cur = test;
+    }
+  }
+  // Finish the current line, then handle any remaining words.
+  if (i < words.length){
+    // More words exist — append them to `cur` and truncate with ellipsis.
+    cur = (cur ? cur + ' ' : '') + words.slice(i).join(' ');
+    while (cur.length > 1 && ctx.measureText(cur + '…').width > maxWidth){
+      cur = cur.slice(0, -1);
+    }
+    cur = cur.replace(/\s+\S*$/, '') + '…';
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// Custom labelRenderer that wraps. Drops in as `labelRenderer` in the
+// Sigma settings; signature matches sigma 2.4's default.
+function wrappedLabelRenderer(ctx, d, settings){
+  if (!d.label) return;
+  const {labelSize, labelFont, labelWeight, labelColor} = settings;
+  const color = labelColor.attribute
+    ? (d[labelColor.attribute] || labelColor.color || '#000')
+    : labelColor.color;
+  ctx.fillStyle = color;
+  ctx.font = `${labelWeight} ${labelSize}px ${labelFont}`;
+
+  const lines = wrapLabel(ctx, d.label, LABEL_MAX_WIDTH, LABEL_MAX_LINES);
+  if (!lines.length) return;
+  const lineHeight = Math.round(labelSize * 1.2);
+  const x = d.x + d.size + 3;
+  // Vertical center: shift block up by half its extra height so single-line
+  // labels render at exactly the same baseline as before.
+  const baseY = d.y + labelSize / 3 - (lines.length - 1) * lineHeight / 2;
+  for (let k = 0; k < lines.length; k++){
+    ctx.fillText(lines[k], x, baseY + k * lineHeight);
+  }
+}
+
+// Custom hoverRenderer that draws a pill sized to the wrapped block, then
+// delegates the text to wrappedLabelRenderer. Mirrors sigma 2.4's default
+// styling (white pill, soft shadow) so the look is unchanged for short
+// labels — long labels just get a taller, longer pill.
+function wrappedHoverRenderer(ctx, d, settings){
+  const {labelSize, labelFont, labelWeight} = settings;
+  ctx.font = `${labelWeight} ${labelSize}px ${labelFont}`;
+  ctx.fillStyle = '#fff';
+  ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  ctx.shadowBlur = 8; ctx.shadowColor = '#000';
+
+  if (typeof d.label === 'string' && d.label){
+    const lines = wrapLabel(ctx, d.label, LABEL_MAX_WIDTH, LABEL_MAX_LINES);
+    const lineHeight = Math.round(labelSize * 1.2);
+    const maxLineW = Math.max(...lines.map(l => ctx.measureText(l).width));
+    const padX = 5, padY = 3;
+    const left   = d.x + d.size + 1;
+    const right  = d.x + d.size + 3 + maxLineW + padX;
+    const totalH = lineHeight * lines.length + padY * 2;
+    const top    = d.y - totalH / 2;
+    const radius = Math.min(6, totalH / 2);
+    ctx.beginPath();
+    ctx.roundRect(left, top, right - left, totalH, radius);
+    ctx.fill();
+  } else {
+    // No label — match default: circle behind the node.
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, d.size + 2, 0, 2 * Math.PI);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  ctx.shadowBlur = 0;
+  wrappedLabelRenderer(ctx, d, settings);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
