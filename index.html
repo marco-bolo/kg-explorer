@@ -681,7 +681,7 @@ function render(){
       labelColor: {color: T().label},
       minCameraRatio:.05, maxCameraRatio:15,
       nodeReducer:(n,d) => ({...d, label: S.labels ? (d.label||'') : ''}),
-      edgeReducer:(e,d) => ({...d, size: Math.max(.4, Math.min(3.5, (d.weight||1)*.5))}),
+      edgeReducer:(e,d) => ({...d, size: Math.max(.6, Math.min(3.5, (d.weight||1)*.8))}),
     });
     r.on('enterNode', ({node}) => {
       const a = g.getNodeAttributes(node);
