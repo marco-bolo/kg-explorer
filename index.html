@@ -272,7 +272,7 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
     <div class="plbl">Actions</div>
     <button class="btn primary" id="brelayout">↺ Re-run Layout</button>
     <button class="btn" id="breset">⌖ Reset Camera</button>
-    <button class="btn" id="bexport">↓ Export GEXF</button>
+    <button class="btn" id="bexportpng">↓ Export PNG (current view)</button>
   </div>
   <div class="pnl hide" id="pleg">
     <div class="plbl">Legend</div>
@@ -1005,6 +1005,67 @@ function exportGEXF(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  PNG EXPORT — offscreen sigma at print resolution, respects WP filter
+// ═══════════════════════════════════════════════════════════════════════════
+// 2400×1800 (4:3) gives 240 DPI in a 10"-wide PDF figure and drops cleanly
+// into 16:9 PowerPoint slides with even side margins. Change these two
+// constants if a specific report needs a different size.
+const EXPORT_W = 2400, EXPORT_H = 1800;
+
+function exportPNG(width = EXPORT_W, height = EXPORT_H){
+  if (!S.renderer || !S.graph) return;
+
+  // Filename suffixed with the active WP so seven exports don't clobber.
+  const tag = S.wpFilter === 'all' ? 'all-wps' : S.wpFilter.toLowerCase();
+  const fileName = `mbo-catalog-${tag}.png`;
+
+  // Hidden offscreen container at target dimensions.
+  const off = document.createElement('div');
+  off.style.cssText =
+    `position:fixed;left:-99999px;top:0;width:${width}px;height:${height}px;`;
+  document.body.appendChild(off);
+
+  // Fresh sigma on the SAME graphology graph, inheriting all live settings
+  // (color modes, reducers, label config). Sigma 2.4's "edges" WebGL context
+  // is preserveDrawingBuffer:true by default; the other layers are read
+  // inside afterRender (synchronous, same task as render() — safe before
+  // the browser composites).
+  const tmp = new Sigma(S.graph, off, S.renderer.getSettings());
+  tmp.getCamera().setState(S.renderer.getCamera().getState());
+
+  tmp.once('afterRender', () => {
+    const out = document.createElement('canvas');
+    out.width = width; out.height = height;
+    const ctx = out.getContext('2d');
+
+    // Solid theme background — transparent PNGs look broken in slides.
+    const bg = getComputedStyle(document.documentElement)
+      .getPropertyValue('--bg').trim() || '#08101e';
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, width, height);
+
+    // Composite sigma's layered canvases in DOM/z-order.
+    const layers = tmp.getCanvases();
+    ['edges','edgeLabels','nodes','labels','hovers','hoverNodes'].forEach(k => {
+      if (layers[k]) ctx.drawImage(layers[k], 0, 0, width, height);
+    });
+
+    out.toBlob(blob => {
+      const a = Object.assign(document.createElement('a'),
+        { href: URL.createObjectURL(blob), download: fileName });
+      a.click();
+      URL.revokeObjectURL(a.href);
+      tmp.kill();
+      off.remove();
+    }, 'image/png');
+  });
+
+  // Trigger the render so afterRender fires (constructor already ran one
+  // render, but we attach the listener after, so we force a second one).
+  tmp.refresh();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 const qs = s => document.querySelector(s);
@@ -1057,7 +1118,7 @@ qs('#ckaux').addEventListener('change',    e => { S.showAux    = e.target.checke
 qs('#qsearch').addEventListener('input', () => render());
 qs('#brelayout').addEventListener('click', render);
 qs('#breset').addEventListener('click', () => S.renderer?.getCamera().animatedReset());
-qs('#bexport').addEventListener('click', exportGEXF);
+qs('#bexportpng').addEventListener('click', () => exportPNG());
 
 // Detail panel close handlers
 qs('#detail-close').addEventListener('click', closeDetail);
@@ -1104,6 +1165,15 @@ qs('#themetog').addEventListener('click', () => {
     console.warn(e);
   }
 })();
+
+// Allow ?wp=WP3 in the URL to preselect a WP filter on load.
+// Handy for sharing focused views and sets up batch headless export later.
+const wpFromURL = new URLSearchParams(location.search).get('wp');
+if (wpFromURL) {
+  const btn = document.querySelector(`#wptog button[data-wp="${wpFromURL}"]`);
+  if (btn) btn.click();
+}
+
 </script>
 </body>
 </html>
