@@ -264,9 +264,8 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
       <button class="tb" data-c="hierarchy">Hierarchy</button>
     </div>
     <label class="ckrow"><input type="checkbox" id="cklabels" checked><span>Show labels</span></label>
-    <label class="ckrow"><input type="checkbox" id="ckpeople"><span>People/Orgs</span></label>
-    <label class="ckrow"><input type="checkbox" id="ckhowto" checked><span>HowTo / Steps</span></label>
-    <label class="ckrow"><input type="checkbox" id="ckaux"><span>Places, Properties, etc</span></label>
+    <div class="plbl" style="margin-top:.6em;font-size:.85em;opacity:.7">Classes</div>
+    <div id="classtoggles" style="display:grid;grid-template-columns:1fr 1fr;gap:.1em .6em"></div>
   </div>
   <div class="pnl hide" id="pact">
     <div class="plbl">Actions</div>
@@ -408,12 +407,10 @@ const S = {
   nodes: [], edges: [],
   graph: null, renderer: null,
   wpFilter: 'all',
-  colorMode: 'kind',
-  labels: true,
-  showPeople: false,
-  showHowto: true,
-  showAux: false,
-  outProduction: {},   // uid -> count of production-edges out
+   colorMode: 'kind',
+   labels: true,
+   kindVisible: {},  // populated from KIND_DEFAULT_VISIBLE when data loads
+   outProduction: {},   // uid -> count of production-edges out
 };
 const PRODUCTION_EDGES = new Set(['result','step','itemListElement',
                                   'distribution','encodesCreativeWork']);
@@ -488,24 +485,34 @@ function renderHeatmap(stats){
 // ═══════════════════════════════════════════════════════════════════════════
 //  FILTERING — predicate used by buildGraph()
 // ═══════════════════════════════════════════════════════════════════════════
-const AUX_KINDS = new Set(['place','property','term','audience','comment',
-                           'license','grant','contact','datadownload','taxon']);
-function nodeVisible(n){
-  if (S.wpFilter !== 'all') {
-    if (S.wpFilter === 'none' && (n.wp || (n.wps && n.wps.length))) return false;
-    if (S.wpFilter !== 'none') {
-      // Match against the full wps[] (multi-WP) when available, else fall
-      // back to primary wp. A Person credited in WP1 and WP6 should show
-      // up under either filter.
-      const list = (n.wps && n.wps.length) ? n.wps : (n.wp ? [n.wp] : []);
-      if (!list.includes(S.wpFilter)) return false;
-    }
-  }
-  if (!S.showPeople && (n.kind === 'person' || n.kind === 'org')) return false;
-  if (!S.showHowto && n.kind === 'howto') return false;
-  if (!S.showAux && AUX_KINDS.has(n.kind)) return false;
-  const q = (qs('#qsearch')?.value || '').toLowerCase().trim();
-  if (q) {
+// Default-on by class. Mirrors the previous People-Orgs/HowTo/Aux defaults so
+ // the first-load view stays identical; users can flip any individual class
+ // from the side panel. Any kind not listed here defaults to visible (catches
+ // future classes added to the model).
+ const KIND_DEFAULT_VISIBLE = {
+   task: true, deliverable: true, action: true,
+   dataset: true, datadownload: false,
+   document: true, howto: true,
+   instrument: true, platform: true,
+   software: true, service: true,
+   embargo: true, grant: false, taxon: false,
+   person: false, org: false, contact: false,
+   place: false, property: false, term: false,
+   audience: false, comment: false, license: false,
+   other: true,
+ };
+
+ function nodeVisible(n){
+   if (S.wpFilter !== 'all') {
+     if (S.wpFilter === 'none' && (n.wp || (n.wps && n.wps.length))) return false;
+     if (S.wpFilter !== 'none') {
+       const list = (n.wps && n.wps.length) ? n.wps : (n.wp ? [n.wp] : []);
+       if (!list.includes(S.wpFilter)) return false;
+     }
+   }
+   if (S.kindVisible[n.kind] === false) return false;
+   const q = (qs('#qsearch')?.value || '').toLowerCase().trim();
+   if (q) {
     if (!(n.id.toLowerCase().includes(q) || (n.label||'').toLowerCase().includes(q)))
       return false;
   }
@@ -955,6 +962,44 @@ function addRow(name, n, e, ok, errMsg){
   if (!ok && errMsg) console.warn(name, errMsg);
 }
 
+// Reads distinct n.kind values from the loaded data, populates S.kindVisible
+// with the right defaults, and renders one checkbox per class actually present.
+// Called once on first data load from activate().
+function buildClassToggles(){
+  const host = qs('#classtoggles');
+  host.innerHTML = '';
+
+  // Discover the set of kinds present in the data; sort for stable order.
+  const kinds = Array.from(new Set(S.nodes.map(n => n.kind || 'other'))).sort();
+
+  // Seed defaults for any kind we haven't seen before.
+  kinds.forEach(k => {
+    if (!(k in S.kindVisible)){
+      S.kindVisible[k] = (k in KIND_DEFAULT_VISIBLE) ? KIND_DEFAULT_VISIBLE[k] : true;
+    }
+  });
+
+  // Build the checkboxes. Label is the kind name with first letter uppercase.
+  kinds.forEach(k => {
+    const lbl = k.charAt(0).toUpperCase() + k.slice(1);
+    const row = document.createElement('label');
+    row.className = 'ckrow';
+    row.innerHTML =
+      `<input type="checkbox" data-kind="${k}"${S.kindVisible[k] ? ' checked' : ''}>` +
+      `<span>${lbl}</span>`;
+    host.appendChild(row);
+  });
+
+  // Single delegated handler — covers every checkbox we just rendered, plus
+  // any future ones the model gains without code changes.
+  host.addEventListener('change', e => {
+    const k = e.target?.dataset?.kind;
+    if (!k) return;
+    S.kindVisible[k] = e.target.checked;
+    render();
+  });
+}
+
 function activate(){
   qs('#splash').classList.add('gone');
   ['pstats','phm','pfilter','pview','pact','pleg'].forEach(id => qs('#'+id).classList.remove('hide'));
@@ -964,6 +1009,7 @@ function activate(){
   qs('#hbadge').className = 'hbadge ok';
   qs('#hsub').textContent = `${S.nodes.length} nodes · ${S.edges.length} edges · drop more JSON to overlay`;
   renderLegend();
+  buildClassToggles();
   render();
 }
 
@@ -1219,9 +1265,6 @@ qs('#cklabels').addEventListener('change', e => {
   S.labels = e.target.checked;
   if (S.renderer) S.renderer.refresh();
 });
-qs('#ckpeople').addEventListener('change', e => { S.showPeople = e.target.checked; render(); });
-qs('#ckhowto').addEventListener('change',  e => { S.showHowto  = e.target.checked; render(); });
-qs('#ckaux').addEventListener('change',    e => { S.showAux    = e.target.checked; render(); });
 qs('#qsearch').addEventListener('input', () => render());
 qs('#brelayout').addEventListener('click', render);
 qs('#breset').addEventListener('click', () => S.renderer?.getCamera().animatedReset());
