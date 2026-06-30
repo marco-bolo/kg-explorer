@@ -1223,7 +1223,7 @@ function wrapLabel(ctx, text, maxWidth, maxLines){
 
 // Custom labelRenderer that wraps. Drops in as `labelRenderer` in the
 // Sigma settings; signature matches sigma 2.4's default.
-const LABEL_MAX_WIDTH = 180;
+const LABEL_MAX_WIDTH_EM = 16;   // ~16× font size; at 11 px gives 176 (was 180)
 
 function wrappedLabelRenderer(ctx, d, settings){
   if (!d.label) return;
@@ -1235,9 +1235,11 @@ function wrappedLabelRenderer(ctx, d, settings){
   ctx.font = `${labelWeight} ${labelSize}px ${labelFont}`;
 
   // Truncate with ellipsis if needed — single fillText, no multi-line.
+  const maxWidth = labelSize * LABEL_MAX_WIDTH_EM;
   let txt = d.label;
-  if (ctx.measureText(txt).width > LABEL_MAX_WIDTH){
-    while (txt.length > 1 && ctx.measureText(txt + '…').width > LABEL_MAX_WIDTH){
+  if (ctx.measureText(txt).width > maxWidth){
+    while (txt.length > 1 && ctx.measureText(txt + '…').width > maxWidth){
+
       txt = txt.slice(0, -1);
     }
     txt = txt.replace(/\s+\S*$/, '') + '…';
