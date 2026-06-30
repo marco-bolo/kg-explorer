@@ -270,8 +270,13 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
   <div class="pnl hide" id="pact">
     <div class="plbl">Actions</div>
     <button class="btn primary" id="brelayout">↺ Re-run Layout</button>
-    <button class="btn" id="breset">⌖ Reset Camera</button>
+     <select id="layoutmode" class="btn" style="margin-left:.4em">
+       <option value="compact">Compact</option>
+       <option value="balanced" selected>Balanced</option>
+       <option value="spacious">Spacious</option>
+     </select>
     <button class="btn" id="bexportpng">↓ Export PNG (current view)</button>
+    <button class="btn" id="breset">⊙ Reset View</button>
   </div>
   <div class="pnl hide" id="pleg">
     <div class="plbl">Legend</div>
@@ -409,6 +414,7 @@ const S = {
   wpFilter: 'all',
    colorMode: 'kind',
    labels: true,
+   layout: 'balanced',
    kindVisible: {},  // populated from KIND_DEFAULT_VISIBLE when data loads
    outProduction: {},   // uid -> count of production-edges out
 };
@@ -540,17 +546,68 @@ function colorFor(n, inHierarchy){
 // ═══════════════════════════════════════════════════════════════════════════
 //  LAYOUT — d3 force, ported from Steve's
 // ═══════════════════════════════════════════════════════════════════════════
+
+// Layout presets tuned for the MARCO-BOLO graph shape: hub-heavy in the
+// centre (Tasks/Deliverables/Actions) with long-tail leaves (Documents,
+// Datasets). Each preset trades off density vs label legibility.
+const LAYOUT_PRESETS = {
+  // Roughly the original tuning — densest, smallest export footprint,
+  // labels overlap in the centre.
+  compact: {
+    linkDistance: 55,
+    linkStrength: d => Math.min(0.5, d.w * 0.12),
+    chargeBase: -110, chargePerSize: -8,
+    collidePadding: 3,
+    centerForce: 'forceCenter',
+    centerStrength: 1,
+    ticks: g => Math.min(220, Math.max(80, 400 - g.order)),
+  },
+  // New default — clearer labels, hubs separate, still everything-on-screen.
+  // forceCenter swapped for soft forceX/Y so the centroid drifts a bit
+  // instead of being yanked to origin.
+  balanced: {
+    linkDistance: 95,
+    linkStrength: d => Math.min(0.45, d.w * 0.1),
+    chargeBase: -220, chargePerSize: -14,
+    collidePadding: 8,
+    centerForce: 'forceXY',
+    centerStrength: 0.04,
+    ticks: g => Math.min(300, Math.max(120, 500 - g.order)),
+  },
+  // For dense WP views where you want to read every label without zooming.
+  spacious: {
+    linkDistance: 150,
+    linkStrength: d => Math.min(0.4, d.w * 0.09),
+    chargeBase: -380, chargePerSize: -22,
+    collidePadding: 14,
+    centerForce: 'forceXY',
+    centerStrength: 0.025,
+    ticks: g => Math.min(400, Math.max(160, 600 - g.order)),
+  },
+};
+
 function applyLayout(g){
+  const p = LAYOUT_PRESETS[S.layout] || LAYOUT_PRESETS.balanced;
   const nodes = [], links = [];
   g.forEachNode((n, a) => nodes.push({id:n, sz:a.size||5}));
   g.forEachEdge((e, a, s, t) => links.push({source:s, target:t, w:a.weight||1}));
+
   const sim = d3.forceSimulation(nodes)
-    .force('link',   d3.forceLink(links).id(d=>d.id).distance(55).strength(d=>Math.min(.5, d.w*.12)))
-    .force('charge', d3.forceManyBody().strength(n => -110 - n.sz*8))
-    .force('center', d3.forceCenter(0, 0))
-    .force('coll',   d3.forceCollide(n => n.sz + 3))
-    .stop();
-  sim.tick(Math.min(220, Math.max(80, 400 - g.order)));
+    .force('link', d3.forceLink(links).id(d=>d.id)
+                     .distance(p.linkDistance).strength(p.linkStrength))
+    .force('charge', d3.forceManyBody()
+                     .strength(n => p.chargeBase + n.sz * p.chargePerSize))
+    .force('coll',  d3.forceCollide(n => n.sz + p.collidePadding));
+
+  if (p.centerForce === 'forceCenter') {
+    sim.force('center', d3.forceCenter(0, 0));
+  } else {
+    sim.force('x', d3.forceX(0).strength(p.centerStrength))
+       .force('y', d3.forceY(0).strength(p.centerStrength));
+  }
+
+  sim.stop();
+  sim.tick(p.ticks(g));
   const nmap = Object.fromEntries(nodes.map(n => [n.id, n]));
   g.forEachNode(n => {
     const nd = nmap[n];
@@ -1223,7 +1280,7 @@ function wrapLabel(ctx, text, maxWidth, maxLines){
 
 // Custom labelRenderer that wraps. Drops in as `labelRenderer` in the
 // Sigma settings; signature matches sigma 2.4's default.
-const LABEL_MAX_WIDTH_EM = 16;   // ~16× font size; at 11 px gives 176 (was 180)
+const LABEL_MAX_WIDTH_EM = 26;   // ~16× font size; at 11 px gives 176 (was 180)
 
 function wrappedLabelRenderer(ctx, d, settings){
   if (!d.label) return;
@@ -1341,6 +1398,12 @@ qs('#qsearch').addEventListener('input', () => render());
 qs('#brelayout').addEventListener('click', render);
 qs('#breset').addEventListener('click', () => S.renderer?.getCamera().animatedReset());
 qs('#bexportpng').addEventListener('click', () => exportPNG());
+document.addEventListener('DOMContentLoaded', () => {
+  qs('#layoutmode').addEventListener('change', e => {
+    S.layout = e.target.value;
+    render();
+  });
+});
 
 // Detail panel close handlers
 qs('#detail-close').addEventListener('click', closeDetail);
