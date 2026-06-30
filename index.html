@@ -1150,59 +1150,42 @@ function drawExportLegend(ctx, W, H, scale, bg){
   if (!entries.length) return;
 
   // Sizes scale with the export resolution.
-  const pad     = Math.round(18 * scale);
-  const titleSz = Math.round(18 * scale);
-  const itemSz  = Math.round(13 * scale);
-  const dot     = Math.round(11 * scale);
-  const rowH    = Math.round(20 * scale);
-  const gap     = Math.round(8  * scale);
+  const margin  = Math.round(8  * scale);  // outer offset from canvas edge
+   const titleSz = Math.round(18 * scale);
+   const subSz   = Math.round(16 * scale);  // italic subtitle, slightly smaller
+   const itemSz  = Math.round(13 * scale);
+   const dot     = Math.round(11 * scale);
+   const rowH    = Math.round(20 * scale);
+   const gap     = Math.round(8  * scale);
+   const titleLH = Math.round(titleSz * 1.15);
+   const subLH   = Math.round(subSz   * 1.4);
 
-  const wpLabel = S.wpFilter === 'all' ? 'All Work Packages' : S.wpFilter;
-  const title = `MARCO-BOLO Catalog — ${wpLabel}`;
+   const subtitle = S.wpFilter === 'all' ? 'All Work Packages' : S.wpFilter;
 
-  // Measure to size the background box exactly.
-  ctx.font = `600 ${titleSz}px Space Mono, monospace`;
-  const titleW = ctx.measureText(title).width;
-  ctx.font = `400 ${itemSz}px Space Mono, monospace`;
-  let maxItemW = 0;
-  entries.forEach(([, lbl]) => {
-    const w = ctx.measureText(lbl).width;
-    if (w > maxItemW) maxItemW = w;
-  });
-  const innerW = Math.max(titleW, maxItemW + dot + gap);
-  const boxW = innerW + pad * 2;
-  const boxH = pad + titleSz + gap + entries.length * rowH + pad;
+   const left = margin;
+   let   y    = margin + titleSz * 0.9;     // y tracks the next baseline
 
-  const left = pad;
-  const top  = H - boxH - pad;
-
-  // Background — opaque-ish theme bg with a thin border so the box reads on
-  // both light and dark themes regardless of what's underneath.
-  ctx.fillStyle = bg;
-  ctx.globalAlpha = 0.92;
-  ctx.fillRect(left, top, boxW, boxH);
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = t.label;
-  ctx.globalAlpha = 0.25;
-  ctx.lineWidth = Math.max(1, Math.round(scale));
-  ctx.strokeRect(left + 0.5, top + 0.5, boxW - 1, boxH - 1);
-  ctx.globalAlpha = 1;
-
-  // Title.
+  // Title (bold).
   ctx.fillStyle = t.label;
   ctx.font = `600 ${titleSz}px Space Mono, monospace`;
-  ctx.fillText(title, left + pad, top + pad + titleSz * 0.85);
+  ctx.fillText('MARCO-BOLO Catalog', left, y);
+
+  // Italic subtitle on the line below.
+  y += titleLH;
+  ctx.font = `italic 400 ${subSz}px Space Mono, monospace`;
+  ctx.fillText(subtitle, left, y);
 
   // Items.
+  y += subLH;
   ctx.font = `400 ${itemSz}px Space Mono, monospace`;
   entries.forEach(([k, lbl], i) => {
-    const baseY = top + pad + titleSz + gap + i * rowH + rowH * 0.7;
+    const baseY = y + i * rowH + rowH * 0.7;
     ctx.fillStyle = t.kind[k] || t.kind.other;
     ctx.beginPath();
-    ctx.arc(left + pad + dot/2, baseY - itemSz * 0.35, dot/2, 0, Math.PI * 2);
+    ctx.arc(left + dot/2, baseY - itemSz * 0.35, dot/2, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = t.label;
-    ctx.fillText(lbl, left + pad + dot + gap, baseY);
+    ctx.fillText(lbl, left + dot + gap, baseY);
   });
 }
 
