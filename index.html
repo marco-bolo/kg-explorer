@@ -1064,27 +1064,44 @@ const EXPORT_W = 2400, EXPORT_H = 1800;
 function exportPNG(width = EXPORT_W, height = EXPORT_H){
   if (!S.renderer || !S.graph) return;
 
-  // Filename suffixed with the active WP so seven exports don't clobber.
   const tag = S.wpFilter === 'all' ? 'all-wps' : S.wpFilter.toLowerCase();
   const fileName = `mbo-catalog-${tag}.png`;
-  // Label wrapping. 180px ~= 30 characters at 11px Space Mono — long enough
-  // for "MARCO-BOLO Deliverable D5.5" types of name but narrow enough that
-  // dense regions don't smear into each other. 3 lines max with ellipsis.
-  const LABEL_MAX_WIDTH = 180;
-  const LABEL_MAX_LINES = 3;
 
-  // Hidden offscreen container at target dimensions.
+  // Scale factor: how much bigger is the export canvas than the live viewport?
+  // Drives label/node/edge size multipliers so features stay visually
+  // proportional instead of shrinking to dots on a much larger canvas.
+  const mount = qs('#smount');
+  const liveW = mount.clientWidth  || 1200;
+  const liveH = mount.clientHeight || 900;
+  const scale = Math.max(width / liveW, height / liveH);
+
   const off = document.createElement('div');
   off.style.cssText =
     `position:fixed;left:-99999px;top:0;width:${width}px;height:${height}px;`;
   document.body.appendChild(off);
 
-  // Fresh sigma on the SAME graphology graph, inheriting all live settings
-  // (color modes, reducers, label config). Sigma 2.4's "edges" WebGL context
-  // is preserveDrawingBuffer:true by default; the other layers are read
-  // inside afterRender (synchronous, same task as render() — safe before
-  // the browser composites).
-  const tmp = new Sigma(S.graph, off, S.renderer.getSettings());
+  // Chain on top of the live reducers so visibility, color, and label gating
+  // logic are all preserved — we only inflate the size attribute.
+  const live = S.renderer.getSettings();
+  const liveNodeReducer = live.nodeReducer || ((n, d) => d);
+  const liveEdgeReducer = live.edgeReducer || ((e, d) => d);
+
+  const exportSettings = {
+    ...live,
+    labelSize: Math.round((live.labelSize || 11) * scale),
+    nodeReducer: (n, d) => {
+      const r = liveNodeReducer(n, d);
+      const s = (r.size != null ? r.size : d.size) * scale;
+      return { ...r, size: s };
+    },
+    edgeReducer: (e, d) => {
+      const r = liveEdgeReducer(e, d);
+      const s = (r.size != null ? r.size : d.size) * scale;
+      return { ...r, size: s };
+    },
+  };
+
+  const tmp = new Sigma(S.graph, off, exportSettings);
   tmp.getCamera().setState(S.renderer.getCamera().getState());
 
   tmp.once('afterRender', () => {
@@ -1092,17 +1109,17 @@ function exportPNG(width = EXPORT_W, height = EXPORT_H){
     out.width = width; out.height = height;
     const ctx = out.getContext('2d');
 
-    // Solid theme background — transparent PNGs look broken in slides.
     const bg = getComputedStyle(document.documentElement)
       .getPropertyValue('--bg').trim() || '#08101e';
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, width, height);
 
-    // Composite sigma's layered canvases in DOM/z-order.
     const layers = tmp.getCanvases();
     ['edges','edgeLabels','nodes','labels','hovers','hoverNodes'].forEach(k => {
       if (layers[k]) ctx.drawImage(layers[k], 0, 0, width, height);
     });
+
+    drawExportLegend(ctx, width, height, scale, bg);
 
     out.toBlob(blob => {
       const a = Object.assign(document.createElement('a'),
@@ -1114,9 +1131,79 @@ function exportPNG(width = EXPORT_W, height = EXPORT_H){
     }, 'image/png');
   });
 
-  // Trigger the render so afterRender fires (constructor already ran one
-  // render, but we attach the listener after, so we force a second one).
   tmp.refresh();
+}
+
+// Draws a legend block in the bottom-left of the export canvas, listing every
+// class currently visible (not just LEGEND_KINDS — so user-enabled classes
+// from the per-class toggles show up too).
+function drawExportLegend(ctx, W, H, scale, bg){
+  const t = T();
+
+  // Canonical-first ordering, then any extras the user has toggled on.
+  const canonical = LEGEND_KINDS.filter(([k]) => S.kindVisible[k] !== false);
+  const extras = Object.keys(S.kindVisible)
+    .filter(k => S.kindVisible[k] && !LEGEND_KINDS.some(([ck]) => ck === k))
+    .sort()
+    .map(k => [k, k.charAt(0).toUpperCase() + k.slice(1)]);
+  const entries = [...canonical, ...extras];
+  if (!entries.length) return;
+
+  // Sizes scale with the export resolution.
+  const pad     = Math.round(18 * scale);
+  const titleSz = Math.round(18 * scale);
+  const itemSz  = Math.round(13 * scale);
+  const dot     = Math.round(11 * scale);
+  const rowH    = Math.round(20 * scale);
+  const gap     = Math.round(8  * scale);
+
+  const wpLabel = S.wpFilter === 'all' ? 'All Work Packages' : S.wpFilter;
+  const title = `MARCO-BOLO Catalog — ${wpLabel}`;
+
+  // Measure to size the background box exactly.
+  ctx.font = `600 ${titleSz}px Space Mono, monospace`;
+  const titleW = ctx.measureText(title).width;
+  ctx.font = `400 ${itemSz}px Space Mono, monospace`;
+  let maxItemW = 0;
+  entries.forEach(([, lbl]) => {
+    const w = ctx.measureText(lbl).width;
+    if (w > maxItemW) maxItemW = w;
+  });
+  const innerW = Math.max(titleW, maxItemW + dot + gap);
+  const boxW = innerW + pad * 2;
+  const boxH = pad + titleSz + gap + entries.length * rowH + pad;
+
+  const left = pad;
+  const top  = H - boxH - pad;
+
+  // Background — opaque-ish theme bg with a thin border so the box reads on
+  // both light and dark themes regardless of what's underneath.
+  ctx.fillStyle = bg;
+  ctx.globalAlpha = 0.92;
+  ctx.fillRect(left, top, boxW, boxH);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = t.label;
+  ctx.globalAlpha = 0.25;
+  ctx.lineWidth = Math.max(1, Math.round(scale));
+  ctx.strokeRect(left + 0.5, top + 0.5, boxW - 1, boxH - 1);
+  ctx.globalAlpha = 1;
+
+  // Title.
+  ctx.fillStyle = t.label;
+  ctx.font = `600 ${titleSz}px Space Mono, monospace`;
+  ctx.fillText(title, left + pad, top + pad + titleSz * 0.85);
+
+  // Items.
+  ctx.font = `400 ${itemSz}px Space Mono, monospace`;
+  entries.forEach(([k, lbl], i) => {
+    const baseY = top + pad + titleSz + gap + i * rowH + rowH * 0.7;
+    ctx.fillStyle = t.kind[k] || t.kind.other;
+    ctx.beginPath();
+    ctx.arc(left + pad + dot/2, baseY - itemSz * 0.35, dot/2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = t.label;
+    ctx.fillText(lbl, left + pad + dot + gap, baseY);
+  });
 }
 
 // Word-wrap with ellipsis on overflow. Pure measure-and-split using the
