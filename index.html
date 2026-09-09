@@ -325,7 +325,7 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
 const THEMES = {
   dark: {
     kind: {
-      task: '#f59e0b', deliverable: '#a78bfa', action: '#fb923c',
+      action: '#fb923c',
       dataset: '#38bdf8', datadownload: '#22d3ee',
       document: '#34d399',
       howto: '#f472b6',
@@ -361,7 +361,7 @@ const THEMES = {
   },
   light: {
     kind: {
-      task: '#b45309', deliverable: '#6d28d9', action: '#c2410c',
+      action: '#c2410c',
       dataset: '#0369a1', datadownload: '#0e7490',
       document: '#047857',
       howto: '#be185d',
@@ -399,7 +399,7 @@ const T = () => THEMES[currentTheme];
 
 // Friendly labels for the kinds shown in the legend
 const LEGEND_KINDS = [
-  ['task','Task'], ['deliverable','Deliverable'], ['dataset','Dataset'],
+  ['action','Action'], ['dataset','Dataset'],
   ['document','Document'], ['howto','HowTo / Step'], ['instrument','Instrument'],
   ['platform','Platform'], ['person','Person / Org'],
 ];
@@ -461,8 +461,7 @@ function renderHeatmap(stats){
   const t = T();
   const wps = ['WP1','WP2','WP3','WP4','WP5','WP6','WP7'];
   const rows = [
-    ['Tasks',       ['task']],
-    ['Deliv',       ['deliverable']],
+    ['Actions',     ['action']],
     ['Data',        ['dataset','datadownload']],
     ['Docs',        ['document']],
     ['HowTo',       ['howto']],
@@ -496,7 +495,7 @@ function renderHeatmap(stats){
  // from the side panel. Any kind not listed here defaults to visible (catches
  // future classes added to the model).
  const KIND_DEFAULT_VISIBLE = {
-   task: true, deliverable: true, action: true,
+   action: true,
    dataset: true, datadownload: false,
    document: true, howto: true,
    instrument: true, platform: true,
@@ -529,7 +528,7 @@ function colorFor(n, inHierarchy){
   const t = T();
   if (S.colorMode === 'wp') return t.wp[n.wp] || t.wp[null];
   if (S.colorMode === 'orphan') {
-    const isHub = n.kind === 'task' || n.kind === 'deliverable';
+    const isHub = n.kind === 'action';
     if (isHub && !S.outProduction[n.id]) return t.orphan;   // red: orphan
     if (isHub) return t.hub;                                // green: has products
     return t.nonHub;                                        // dim: not a hub
@@ -548,8 +547,8 @@ function colorFor(n, inHierarchy){
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Layout presets tuned for the MARCO-BOLO graph shape: hub-heavy in the
-// centre (Tasks/Deliverables/Actions) with long-tail leaves (Documents,
-// Datasets). Each preset trades off density vs label legibility.
+// centre (Actions) with long-tail leaves (Documents, Datasets). Each preset
+// trades off density vs label legibility.
 const LAYOUT_PRESETS = {
   // Roughly the original tuning — densest, smallest export footprint,
   // labels overlap in the centre.
@@ -633,8 +632,7 @@ function isHierarchyEdge(e, nodesById){
   if (e.kind !== 'result') return false;
   const f = nodesById[e.from], t = nodesById[e.to];
   if (!f || !t) return false;
-  const ACTION_KINDS = new Set(['task','deliverable','action']);
-  return ACTION_KINDS.has(f.kind) && ACTION_KINDS.has(t.kind);
+  return f.kind === 'action' && t.kind === 'action';
 }
 
 function buildGraph(){
@@ -643,7 +641,7 @@ function buildGraph(){
 
   for (const n of S.nodes) {
     if (!nodeVisible(n)) continue;
-    const isHub = n.kind === 'task' || n.kind === 'deliverable';
+    const isHub = n.kind === 'action';
     g.addNode(n.id, {
       label: n.label || n.id,
       kind: n.kind, wp: n.wp,
@@ -706,7 +704,7 @@ function buildGraph(){
   // size hubs by degree
   g.forEachNode((n, a) => {
     const deg = g.degree(n);
-    const baseSize = (a.kind === 'task' || a.kind === 'deliverable') ? 7 : 4;
+    const baseSize = a.kind === 'action' ? 7 : 4;
     g.setNodeAttribute(n, 'size', Math.max(baseSize,
       Math.min(22, baseSize + Math.sqrt(deg) * 1.6)));
   });
@@ -732,7 +730,7 @@ function render(){
     let ds = 0, ac = 0;
     g.forEachNode((n, a) => {
       if (a.kind === 'dataset' || a.kind === 'datadownload') ds++;
-      if (['task','deliverable','action'].includes(a.kind)) ac++;
+      if (a.kind === 'action') ac++;
     });
     qs('#sd').textContent = ds;
     qs('#sa').textContent = ac;

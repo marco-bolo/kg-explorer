@@ -55,12 +55,6 @@ TYPE_TO_KIND = {
     "Taxon": "taxon",
 }
 
-def refine_action_kind(name: str) -> str:
-    n = (name or "").lower()
-    if "deliverable" in n: return "deliverable"
-    if "task" in n: return "task"
-    return "action"
-
 PRODUCTION_EDGES = {"result", "step", "itemListElement", "distribution",
                     "encodesCreativeWork"}
 
@@ -97,12 +91,18 @@ def label_for(doc: dict) -> str:
 
 
 def kind_for(doc: dict) -> str:
+    """Map @type to a legend class.
+
+    Deliberately does NOT look at the node's name. `name` is uncontrolled
+    free text in the upstream CSVs, and keying the Task/Deliverable split
+    off it produced false positives — e.g. three metadata-entry actions in
+    mbo_0000004 (rows 7-9) carry the literal name "MARCO-BOLO Deliverable
+    3.3" and were rendered as Deliverables. Every Action is now just
+    `action`; re-introduce the split when the model carries a declared
+    category field rather than a hand-typed name."""
     t = doc.get("@type", "Thing")
     if isinstance(t, list): t = t[0]
-    k = TYPE_TO_KIND.get(t, "other")
-    if k == "action":
-        return refine_action_kind(label_for(doc))
-    return k
+    return TYPE_TO_KIND.get(t, "other")
 
 
 def _flatten_value(v):
@@ -328,12 +328,10 @@ def compute_stats(nodes, edges):
         if e["kind"] in PRODUCTION_EDGES:
             out_production[e["from"]].add(e["kind"])
 
-    orphans = {"tasks": [], "deliverables": []}
+    orphans = {"actions": []}
     for uid, n in nodes.items():
-        if n["kind"] == "task" and not out_production.get(uid):
-            orphans["tasks"].append(uid)
-        elif n["kind"] == "deliverable" and not out_production.get(uid):
-            orphans["deliverables"].append(uid)
+        if n["kind"] == "action" and not out_production.get(uid):
+            orphans["actions"].append(uid)
 
     return {
         "wp_stats": {wp: dict(c) for wp, c in sorted(wp_stats.items())},
@@ -375,8 +373,7 @@ def main():
     print(f"  edges:     {len(edges)}  (dropped {dropped} dangling)")
     print(f"  per-WP:    {wp_summary}")
     print(f"  unattributed: {unattributed}")
-    print(f"  orphan tasks:        {len(stats['orphans']['tasks'])}")
-    print(f"  orphan deliverables: {len(stats['orphans']['deliverables'])}")
+    print(f"  orphan actions:      {len(stats['orphans']['actions'])}")
 
     if args.check:
         print("\nDry run; no file written.")
