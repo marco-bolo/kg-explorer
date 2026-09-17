@@ -1,0 +1,89 @@
+{
+  "upload_type": "software",
+  "title": "MARCO-BOLO KG Explorer: an interactive knowledge graph browser for the MARCO-BOLO metadata catalog",
+  "version": "0.1.0-draft",
+  "language": "eng",
+  "access_right": "open",
+  "license": "other-open",
+  "description": "<p><strong>DRAFT RELEASE &mdash; WORK IN PROGRESS. THIS IS NOT A FINISHED PROJECT.</strong> This archive is a snapshot of active, unfinished development work, deposited for citability and transparency only. The graph model, the entity and edge typing, the Work Package attribution heuristics and the interface are all subject to change without notice, and nothing here should be treated as a stable or authoritative MARCO-BOLO product. Breaking changes between this and any subsequent release are expected.</p><p><strong>The author list on this deposit is provisional and under discussion.</strong> It is expected to change in a later version. See the additional notes for details.</p><p>The MARCO-BOLO KG Explorer is a browser-based tool for exploring the MARCO-BOLO metadata catalog as a knowledge graph. It consumes the schema.org-compacted JSON-LD published by the <a href=\"https://github.com/marco-bolo/csv-to-json-ld\">marco-bolo/csv-to-json-ld</a> pipeline and bundles it into a single graph of nodes and directed edges, where entities (datasets, documents, people, organizations, places, instruments, platforms, tasks and deliverables) are linked by the schema.org properties that relate them, together with provenance edges recovered from per-entity input-metadata sidecars.</p><p>The interface supports filtering by Work Package, search by label or MARCO-BOLO permanent identifier, and several colouring modes, including an orphan view that highlights Tasks and Deliverables with no outbound production edge &mdash; a quick way to find gaps in the catalog. A Work Package coverage heatmap summarises entity kinds against Work Packages, additional JSON bundles can be dropped in to overlay them on the loaded graph, and the graph can be exported as GEXF for further analysis. The bundle is rebuilt automatically when the upstream pipeline publishes fresh JSON-LD.</p><p>This work is a fork of <a href=\"https://github.com/sdiggs/kg-explorer\">sdiggs/kg-explorer</a> by Stephen C. Diggs. The rendering stack (graphology, sigma.js and d3-force), the application chrome and the drag-and-drop overlay workflow are his; the MARCO-BOLO-specific graph construction and Work Package logic were added in this fork.</p><p>This repository is developed under MARCO-BOLO (MARine COastal BiOdiversity Long-term Observations), Horizon Europe grant agreement No. 101082021.</p>",
+  "notes": "Draft release. This deposit is an interim snapshot of in-progress work by MARCO-BOLO Work Package 1 and does not represent a completed project, a finished deliverable, or a stable software release. Please check for a later version before citing or reusing.\n\nProvisional author list: the creators listed here are the MARCO-BOLO WP1 personnel who worked on this fork, but the author list is not final. This software derives from sdiggs/kg-explorer by Stephen C. Diggs, whose contribution to the underlying tool is substantial and is acknowledged in the description and in the related identifiers. How that contribution should be reflected in authorship is still being discussed within the project, and the author list is expected to be revised in a later version. The omission of any contributor from this draft is not a statement about their contribution.\n\nLicensing: at the time of this draft the repository does not carry a license file, and neither does the upstream work it derives from. The deposit is therefore recorded as open with unspecified terms pending an upstream licensing decision.",
+  "keywords": [
+    "draft",
+    "work in progress",
+    "provisional author list",
+    "MBO WP1",
+    "MARCO-BOLO",
+    "knowledge graph",
+    "marine biodiversity",
+    "metadata catalog",
+    "JSON-LD",
+    "linked data",
+    "graph visualization",
+    "FAIR data"
+  ],
+  "creators": [
+    {
+      "name": "Formel, Stephen",
+      "orcid": "0000-0001-7418-1244"
+    },
+    {
+      "name": "Exter, Katrina",
+      "orcid": "0000-0002-5911-1536"
+    },
+    {
+      "name": "Beja, Joana",
+      "orcid": "0000-0002-5196-8447"
+    },
+    {
+      "name": "Figueroa Ashforth, Chloe",
+      "orcid": "0009-0007-9889-5090"
+    },
+    {
+      "name": "Fugazza, Cristiano",
+      "orcid": "0000-0003-2679-4868"
+    },
+    {
+      "name": "Provoost, Pieter",
+      "orcid": "0000-0002-4236-0384"
+    },
+    {
+      "name": "Tagliolato, Paolo",
+      "orcid": "0000-0002-0261-313X"
+    },
+    {
+      "name": "Buttigieg, Pier Luigi",
+      "orcid": "0000-0002-4366-3088"
+    },
+    {
+      "name": "Lear, Dan",
+      "orcid": "0000-0002-5806-0837"
+    }
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/sdiggs/kg-explorer",
+      "relation": "isDerivedFrom",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/sdiggs/ioos-plankton-kg",
+      "relation": "references",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/marco-bolo/csv-to-json-ld",
+      "relation": "references",
+      "scheme": "url"
+    }
+  ],
+  "communities": [
+    {
+      "identifier": "marco-bolo"
+    }
+  ],
+  "grants": [
+    {
+      "id": "10.13039/501100000780::101082021"
+    }
+  ]
+}
