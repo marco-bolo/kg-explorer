@@ -234,6 +234,15 @@ def attribute_wps(nodes, edges, parent_via_sidecar):
          Person credited as author of D1.1 and D1.2 picks up WP1 from both.
          Persons working across multiple WPs end up with a multi-WP `wps`
          list; `wp` is the most-cited one (ties broken by lowest WP number).
+      5. Downward inheritance for parent Actions. Rules 1-3 only ever walk
+         *upward*, so a root Action whose children are all cleanly attributed
+         still gets nothing -- `MARCO-BOLO Project` and the sea-trial cluster
+         are exactly that. Such a parent inherits the union of its `result`
+         children's WPs into `wps`, leaving `wp` (primary) None: it belongs to
+         no single WP, and a null primary keeps it neutral in WP colouring and
+         out of the per-WP counts. Without this the viewer drops the parent
+         under every WP filter, and with it every parent->child edge, which
+         makes the tasks and deliverables look orphaned.
     """
     def parse_wp(text):
         if not text: return None
@@ -316,6 +325,34 @@ def attribute_wps(nodes, edges, parent_via_sidecar):
                 extra.add(from_wp)
         n["wps"] = sorted(extra, key=lambda w: (w != n["wp"], w))
 
+    # Pass 3 (rule 5) -- downward inheritance for parent Actions.
+    #
+    # Runs last, so children attributed by any earlier rule count. Iterates to
+    # a fixpoint because the hierarchy nests: the sea-trial sensor Actions pick
+    # up WP4 from their Dataset children on the first round, and their parent
+    # ("...: sea trial") picks it up from them on the second.
+    result_children = defaultdict(list)
+    for e in edges:
+        if e["kind"] == "result" and e["from"] in nodes and e["to"] in nodes:
+            result_children[e["from"]].append(e["to"])
+
+    for _ in range(10):
+        changed = False
+        for uid, n in nodes.items():
+            if n["kind"] != "action" or n["wp"] or n["wps"]:
+                continue
+            inherited = set()
+            for child in result_children.get(uid, []):
+                inherited.update(nodes[child]["wps"])
+            if not inherited:
+                continue
+            # `wp` stays None on purpose -- see rule 5 in the docstring.
+            n["wps"] = sorted(inherited)
+            n["wp_via"] = f"parent-of->{len(result_children[uid])}-children"
+            changed = True
+        if not changed:
+            break
+
 
 def compute_stats(nodes, edges):
     wp_stats = defaultdict(Counter)
@@ -367,12 +404,15 @@ def main():
 
     wp_summary = {wp: sum(c.values()) for wp, c in stats["wp_stats"].items()}
     unattributed = sum(1 for n in nodes.values() if not n["wp"])
+    # Parent Actions given a WP span by rule 5: no primary WP, so they count as
+    # unattributed above, but they are visible under each WP filter.
+    spanning = sum(1 for n in nodes.values() if not n["wp"] and n["wps"])
 
     print()
     print(f"  nodes:     {len(nodes)}")
     print(f"  edges:     {len(edges)}  (dropped {dropped} dangling)")
     print(f"  per-WP:    {wp_summary}")
-    print(f"  unattributed: {unattributed}")
+    print(f"  unattributed: {unattributed}  (of which {spanning} are WP-spanning parents)")
     print(f"  orphan actions:      {len(stats['orphans']['actions'])}")
 
     if args.check:
