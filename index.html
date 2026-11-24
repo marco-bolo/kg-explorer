@@ -110,6 +110,12 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
 #lst{margin-left:auto;transition:color .3s}
 #lst.running{color:var(--amber)}#lst.done{color:var(--green)}
 .hide{display:none!important}
+/* Work view banner — shown while the graph is narrowed to one person's/org's work */
+#workbar{position:absolute;top:12px;left:12px;z-index:15;background:var(--bg2);border:1px solid var(--border2);
+  border-radius:5px;padding:8px 12px;font-family:var(--mono);font-size:10px;color:var(--text);
+  display:flex;align-items:center;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.35);max-width:70%}
+#workbar .wb-sub{color:var(--dim)}
+#workbar .btn{display:inline-block;width:auto;margin:0;padding:4px 10px}
 #fpick{display:none}
 /* MBO additions: WP heatmap */
 .wphm{display:grid;grid-template-columns:auto repeat(7,1fr);gap:2px;font-family:var(--mono);font-size:9px;align-items:center}
@@ -292,6 +298,10 @@ footer{grid-area:foot;background:var(--bg2);border-top:1px solid var(--border);d
     </div>
   </div>
   <div id="smount"></div>
+  <div id="workbar" class="hide">
+    <div><div id="wb-title"></div><div class="wb-sub" id="wb-sub"></div></div>
+    <button class="btn" id="wb-exit" title="Show all (Esc)">Show all</button>
+  </div>
   <div id="detail" class="hide">
     <div id="detail-head">
       <div id="detail-title">—</div>
@@ -417,6 +427,7 @@ const S = {
    layout: 'balanced',
    kindVisible: {},  // populated from KIND_DEFAULT_VISIBLE when data loads
    outProduction: {},   // uid -> count of production-edges out
+   focus: null,         // work view: {uid, ids:Set, indirect:Map<workId, Set<personId>>}
 };
 const PRODUCTION_EDGES = new Set(['result','step','itemListElement',
                                   'distribution','encodesCreativeWork']);
@@ -507,7 +518,70 @@ function renderHeatmap(stats){
    other: true,
  };
 
+ // ═══════════════════════════════════════════════════════════════════════
+ //  WORK VIEW — click a person or org to see only the work it is linked to
+ // ═══════════════════════════════════════════════════════════════════════
+ const WORK_KINDS = new Set(['action', 'dataset', 'document']);
+ const WORK_VIEW_KINDS = new Set(['person', 'org']);
+ // Links that do not mean "took part in": audience says who a thing is for.
+ const NON_WORK_EDGES = new Set(['audience', 'wasResultOf', 'metadataEnteredBy']);
+ // person -> org links through which an org reaches its people's work
+ const AFFILIATION_EDGES = new Set(['affiliation', 'worksFor']);
+
+ function workNeighbours(uid, kindOf){
+   const out = new Set();
+   for (const e of S.edges) {
+     if (NON_WORK_EDGES.has(e.kind)) continue;
+     const other = e.from === uid ? e.to : (e.to === uid ? e.from : null);
+     if (other && WORK_KINDS.has(kindOf[other])) out.add(other);
+   }
+   return out;
+ }
+
+ function computeWorkView(uid){
+   const kindOf = Object.fromEntries(S.nodes.map(n => [n.id, n.kind]));
+   const direct = workNeighbours(uid, kindOf);
+   const indirect = new Map();   // work id -> people it was reached through
+   if (kindOf[uid] === 'org') {
+     const people = S.edges
+       .filter(e => AFFILIATION_EDGES.has(e.kind) && e.to === uid && kindOf[e.from] === 'person')
+       .map(e => e.from);
+     for (const p of people) {
+       for (const w of workNeighbours(p, kindOf)) {
+         if (direct.has(w)) continue;
+         if (!indirect.has(w)) indirect.set(w, new Set());
+         indirect.get(w).add(p);
+       }
+     }
+   }
+   return {uid, ids: new Set([uid, ...direct, ...indirect.keys()]), direct, indirect};
+ }
+
+ function enterWorkView(uid){
+   const n = S.nodes.find(x => x.id === uid);
+   if (!n || !WORK_VIEW_KINDS.has(n.kind)) return;
+   S.focus = computeWorkView(uid);
+   const counts = {action: 0, dataset: 0, document: 0};
+   const kindOf = Object.fromEntries(S.nodes.map(x => [x.id, x.kind]));
+   for (const id of S.focus.ids) if (id !== uid) counts[kindOf[id]]++;
+   qs('#wb-title').textContent = `Work of ${n.label || uid}`;
+   let sub = `${counts.action} actions · ${counts.dataset} datasets · ${counts.document} documents`;
+   if (n.kind === 'org') sub += ` · ${S.focus.indirect.size} via its people (faint lines)`;
+   qs('#wb-sub').textContent = sub;
+   qs('#workbar').classList.remove('hide');
+   render();
+ }
+
+ function exitWorkView(){
+   if (!S.focus) return;
+   S.focus = null;
+   qs('#workbar').classList.add('hide');
+   render();
+ }
+
  function nodeVisible(n){
+   // The work view replaces the other filters while it is on.
+   if (S.focus) return S.focus.ids.has(n.id);
    if (S.wpFilter !== 'all') {
      if (S.wpFilter === 'none' && (n.wp || (n.wps && n.wps.length))) return false;
      if (S.wpFilter !== 'none') {
@@ -701,6 +775,14 @@ function buildGraph(){
       hier: hierEdge,
     });
   }
+  // Work view of an org: link it to work reached only through its people.
+  // Drawn faint so it is not mistaken for a link recorded in the data.
+  if (S.focus && S.focus.indirect.size && g.hasNode(S.focus.uid)) {
+    for (const w of S.focus.indirect.keys()) {
+      if (!g.hasNode(w) || g.hasEdge(S.focus.uid, w) || g.hasEdge(w, S.focus.uid)) continue;
+      g.addEdge(S.focus.uid, w, {label: 'via people', weight: 1, color: T().hierEdgeDim, indirect: true});
+    }
+  }
   // size hubs by degree
   g.forEachNode((n, a) => {
     const deg = g.degree(n);
@@ -761,7 +843,10 @@ function render(){
       tip.style.display = 'block';
     });
     r.on('leaveNode', () => qs('#tip').style.display = 'none');
-    r.on('clickNode', ({node}) => openDetail(node));
+    r.on('clickNode', ({node}) => {
+      openDetail(node);
+      if (!S.focus && WORK_VIEW_KINDS.has(g.getNodeAttribute(node, 'kind'))) enterWorkView(node);
+    });
     r.getMouseCaptor().on('mousemovebody', e => {
       const tip = qs('#tip');
       if (tip.style.display === 'block') {
@@ -861,6 +946,8 @@ function openDetail(uid){
   }
   body += `<div class="dprop"><div class="dprop-k">WP</div><div class="dprop-v">${wpDisplay}${n.wp_via?` <div style="color:var(--dim);font-size:9px;margin-top:2px">via ${esc(n.wp_via)}</div>`:''}</div></div>`;
   body += `<div class="dprop"><div class="dprop-k">JSON-LD</div><div class="dprop-v"><a href="${rorURL}" target="_blank" rel="noopener">view raw</a></div></div>`;
+  if (WORK_VIEW_KINDS.has(n.kind) && !(S.focus && S.focus.uid === uid))
+    body += `<button class="btn" id="bworkview" data-uid="${esc(uid)}">Show their work</button>`;
   body += '</div>';
 
   // Description / abstract
@@ -954,6 +1041,11 @@ function openDetail(uid){
   const dp = qs('#detail');
   dp.dataset.currentUid = uid;   // for theme-toggle re-render
   dp.classList.remove('hide');
+
+  qs('#bworkview')?.addEventListener('click', ev => {
+    enterWorkView(ev.currentTarget.dataset.uid);
+    openDetail(ev.currentTarget.dataset.uid);   // redraw panel without the button
+  });
 
   // Wire internal mbo: links — clicking re-opens the panel on the target.
   qs('#detail-body').querySelectorAll('a[data-mbo]').forEach(a => {
@@ -1406,8 +1498,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // Detail panel close handlers
 qs('#detail-close').addEventListener('click', closeDetail);
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeDetail();
+  if (e.key !== 'Escape') return;
+  if (!qs('#detail').classList.contains('hide')) closeDetail();
+  else exitWorkView();
 });
+qs('#wb-exit').addEventListener('click', exitWorkView);
 
 // Theme toggle — flips dark/light and re-paints every visual through T().
 // Default is dark; the user's choice (once toggled) is remembered.
